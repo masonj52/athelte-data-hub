@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Athlete Data Hub</title>
 <meta name="description" content="Mason’s training studio: today’s readiness, a session log, trends, sleep, running and the notes that explain each number.">
 <meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Data Hub">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="referrer" content="no-referrer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +78,7 @@ ul, ol { list-style: none; }
 .stack-lg > * + * { margin-top: var(--space-xl); }
 
 /* shell */
-.bar { position: sticky; top: 0; z-index: var(--z-sticky-nav); background: var(--color-paper); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.bar { padding-top: env(safe-area-inset-top); position: sticky; top: 0; z-index: var(--z-sticky-nav); background: var(--color-paper); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .bar-in { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: 56px; }
 .mark { font-family: var(--font-display); font-weight: var(--serif-small); font-size: var(--text-lg); color: var(--color-ink); text-decoration: none; white-space: nowrap; }
 .bar-side { display: flex; align-items: center; gap: var(--space-md); min-width: 0; }
@@ -478,7 +485,7 @@ figcaption .readout { color: var(--color-muted); text-align: right; font-variant
   var TABS = ['today', 'log', 'trends', 'sleep', 'run', 'learn'];
   var NAMES = { 'KB AMRAP': 'Kettlebell' };
   function nameOf(t) { return NAMES[t] || t; }
-  var S = { feed: [], summary: {}, feedState: 'loading', feedErr: null, storedAt: 0, sessions: [], dbState: 'loading', busy: false, range: 30, sel: null, editing: null, confirming: null };
+  var S = { feed: [], summary: {}, feedState: 'loading', feedErr: null, storedAt: 0, sessions: [], dbState: 'loading', busy: false, pullNote: '', range: 30, sel: null, editing: null, confirming: null };
   var API = { url: '', pin: '' }, idleTimer = 0;
   var $ = function (id) { return document.getElementById(id); };
 
@@ -583,9 +590,13 @@ figcaption .readout { color: var(--color-muted); text-align: right; font-variant
   function denied(e) { if (e.error === 'bad_pin' || e.error === 'locked' || e.error === 'no_pin') { lock(gateText(e)); return true; } return false; }
   function refresh() {
     if (!API.pin || S.busy) return;
-    S.busy = true; $('reload').setAttribute('aria-busy', 'true');
-    call('feed').then(ingest, function (e) { if (denied(e)) return; S.feedErr = e; if (!S.feed.length) S.feedState = 'error'; renderAll(); })
-      .then(function () { S.busy = false; $('reload').removeAttribute('aria-busy'); });
+    S.busy = true; S.pullNote = ''; $('reload').setAttribute('aria-busy', 'true'); $('reload').textContent = 'Pulling';
+    var fail = function (e) { if (denied(e)) return; S.feedErr = e; if (!S.feed.length) S.feedState = 'error'; renderAll(); };
+    call('pull').then(ingest, function (e) {
+      if (e.error !== 'pull_failed' && e.error !== 'bad_request') return fail(e);
+      S.pullNote = e.error === 'pull_failed' ? 'Google Health did not answer, so this is the sheet as it stands. If it keeps happening, open the sheet and choose Athlete Hub, then Reconnect Google Health.' : 'The script is an older version without live pull, so this is the sheet as it stands.';
+      return call('feed').then(ingest, fail);
+    }).then(function () { S.busy = false; $('reload').removeAttribute('aria-busy'); $('reload').textContent = 'Refresh'; });
   }
   function byDate(key) { for (var i = 0; i < S.feed.length; i++) if (S.feed[i].Date === key) return S.feed[i]; return null; }
   function latest() { return S.feed[S.feed.length - 1] || null; }
@@ -627,8 +638,9 @@ figcaption .readout { color: var(--color-muted); text-align: right; font-variant
       renderMissions(); return;
     }
     var stale = (utc(localKey()) - utc(t.Date)) / 86400000 >= 2;
-    notice.hidden = !stale;
-    if (stale) { $('feed-notice-text').textContent = 'The feed has not moved since ' + dayLong(t.Date) + '. Open the Athlete Data Hub sheet and choose Athlete Hub, then Reconnect Google Health.'; $('feed-notice-btn').hidden = true; }
+    notice.hidden = !stale && !S.pullNote;
+    if (S.pullNote) { $('feed-notice-text').textContent = S.pullNote; $('feed-notice-btn').hidden = true; }
+    else if (stale) { $('feed-notice-text').textContent = 'The feed has not moved since ' + dayLong(t.Date) + '. Open the Athlete Data Hub sheet and choose Athlete Hub, then Reconnect Google Health.'; $('feed-notice-btn').hidden = true; }
     var blocks = runBlocks();
     setStat('wk-run', blocks.length ? blocks[blocks.length - 1].km : null, 'of ' + RUN_TARGET + ' km');
     setStat('wk-debt', t['Sleep debt 7d h'], 'h');

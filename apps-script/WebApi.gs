@@ -37,6 +37,12 @@ function doPost(e) {
     const gate = webCheckPin_(body.pin);
     if (!gate.ok) return webJson_(gate);
     const action = String(body.action || 'feed');
+    if (action === 'pull') {
+      // Live refresh: fetch the last 2 days from Google Health, recompute, then send the feed.
+      lock.releaseLock();
+      try { pullHealth(2); } catch (err) { return webJson_({ ok: false, error: 'pull_failed' }); }
+      return webJson_(webFeed_());
+    }
     if (action === 'save') {
       if (!webSaveEntry_(body.entry || {})) return webJson_({ ok: false, error: 'invalid' });
     } else if (action === 'delete') {
