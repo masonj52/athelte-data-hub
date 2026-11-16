@@ -11,7 +11,7 @@
  * (Execute as: Me, Who has access: Anyone).
  *
  * Relies on Code.gs for: TAB, TZ, SHIFT_OPTIONS, SESSION_OPTIONS, readConfig_,
- * recompute, logDateKey, num. Calls writeCoachFeed_ (HealthApi.gs) if present.
+ * recompute, logDateKey, localParts, parseDate, num. Calls writeCoachFeed_ (HealthApi.gs) if present.
  */
 
 const WEB_TRIES_PER_LOCK = 5;   // wrong PINs before a timed lock
@@ -130,6 +130,8 @@ function webFeed_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(TAB.DAILY);
   const total = Math.max(sh.getLastRow() - 1, 0), cols = sh.getLastColumn();
   const n = Math.min(total, WEB_FEED_DAYS);
+  let activity = { workouts: [], calories: {} };
+  try { activity = webActivity_(); } catch (err) { /* the feed still goes out without workouts */ }
   return {
     ok: true,
     generated: new Date().toISOString(),
@@ -138,7 +140,36 @@ function webFeed_() {
     head: cols ? sh.getRange(1, 1, 1, cols).getDisplayValues()[0] : [],
     days: n ? sh.getRange(2, 1, n, cols).getDisplayValues() : [],   // newest first, as the sheet shows them
     log: webReadLog_(),
+    workouts: activity.workouts,
+    calories: activity.calories,
   };
+}
+
+/** Fitbit workouts and daily calories from the Raw tab, last WEB_FEED_DAYS days. */
+function webActivity_() {
+  const out = { workouts: [], calories: {} };
+  const sh = SpreadsheetApp.getActive().getSheetByName(TAB.RAW);
+  if (!sh || sh.getLastRow() < 2) return out;
+  const cutoff = Date.now() - WEB_FEED_DAYS * 86400000;
+  sh.getRange(2, 2, sh.getLastRow() - 1, 6).getValues().forEach(r => {   // Type, Start, End, Value, Unit, Extra
+    const type = String(r[0]);
+    if (type !== 'GH Workout' && type !== 'GH Calories daily') return;
+    const a = parseDate(r[1]), b = parseDate(r[2]);
+    if (!a || a.getTime() < cutoff) return;
+    if (type === 'GH Calories daily') {
+      out.calories[localParts(a).key] = [num(r[3]), num(r[5])];
+      return;
+    }
+    const unit = String(r[4] || '');
+    const pick = k => { const m = unit.match(new RegExp(k + ':([0-9.]+)')); return m ? Number(m[1]) : null; };
+    out.workouts.push({
+      start: Utilities.formatDate(a, TZ, 'yyyy-MM-dd HH:mm'),
+      min: b ? Math.round((b - a) / 60000) : null,
+      type: String(r[3] || 'OTHER'), km: num(r[5]), kcal: pick('kcal'), hr: pick('hr'),
+    });
+  });
+  out.workouts.sort((x, y) => (x.start < y.start ? 1 : -1));
+  return out;
 }
 
 /* ───────────────────────── Log tab ───────────────────────── */

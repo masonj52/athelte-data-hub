@@ -14,6 +14,7 @@ Fitbit -> Google Health API -> Apps Script (hourly pull) -> Google Sheet
 
 - `index.html` the whole site (no build step, no libraries)
 - `apps-script/WebApi.gs` the PIN-gated API to add to the sheet's Apps Script project
+- `apps-script/HealthCalories.gs` adds calories to the hourly Google Health pull
 - `manifest.webmanifest`, `icon-*.png`, `icon.svg` the home-screen icon and app settings
 - `.nojekyll` tells GitHub Pages to serve the files as they are
 
