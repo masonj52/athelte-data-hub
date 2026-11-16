@@ -45,7 +45,7 @@ function ghCalorieSamples_(since) {
     const total = ghDailyKcal_('total-calories', 'totalCalories', since);
     let active = {};
     try { active = ghDailyKcal_('active-energy-burned', 'activeEnergyBurned', since); } catch (err) { Logger.log('active calories skipped: ' + err); }
-    Object.keys(total).forEach(k => out.push(ghSample_('GH Calories daily', ghNoon_(k), ghNoon_(k), total[k], 'kcal', active[k] || '')));
+    Object.keys(total).forEach(k => { const noon = new Date(k + 'T12:00:00+09:00'); out.push(ghSample_('GH Calories daily', noon, noon, total[k], 'kcal', active[k] || '')); });
   } catch (err) {
     Logger.log('calories skipped: ' + err);
   }
