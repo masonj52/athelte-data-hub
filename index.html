@@ -7,8 +7,8 @@
 <meta name="description" content="Mason’s training deck: readiness as tempo, workouts, runs, a session log and thirty days of history.">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#11131a" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#e8e9ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11131a">
+<meta name="color-scheme" content="dark">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -26,7 +26,7 @@
 /* Hallmark · pre-emit critique: P4 H5 E4 S5 R4 V4 · weakest: E, empty states are one plain line each */
 /* Hallmark · waive 47c · owner asked for deck hardware · the dial and meters carry live data; mono is kept to numerals */
 :root {
-  color-scheme: dark light;
+  color-scheme: dark;
   --font-read: "Martian Mono", ui-monospace, monospace; --font-ui: "Onest", system-ui, sans-serif;
   --bg: oklch(17% 0.012 265); --panel: oklch(22% 0.014 265); --panel-2: oklch(27% 0.016 265); --well: oklch(13% 0.010 265);
   --line: oklch(30% 0.016 265); --ink: oklch(96% 0.005 265); --ink-2: oklch(80% 0.010 265); --muted: oklch(66% 0.014 265);
@@ -35,15 +35,6 @@
   --none: oklch(60% 0.015 265); --zone: var(--none);
   --r-chip: 12px; --gap: 12px; --pad: 16px; --bar-h: 64px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: oklch(93% 0.006 265); --panel: oklch(98.5% 0.003 265); --panel-2: oklch(95% 0.005 265); --well: oklch(89% 0.008 265);
-    --line: oklch(84% 0.008 265); --ink: oklch(20% 0.015 265); --ink-2: oklch(34% 0.015 265); --muted: oklch(44% 0.014 265);
-    --off: oklch(83% 0.008 265); --focus: oklch(50% 0.14 250); --error: oklch(50% 0.20 25);
-    --s0: oklch(42% 0.19 22); --s30: oklch(54% 0.22 27); --s40: oklch(62% 0.18 50); --s52: oklch(68% 0.15 90); --s65: oklch(58% 0.18 148); --s85: oklch(52% 0.18 255); --s93: oklch(22% 0.02 265);
-    --none: oklch(55% 0.015 265);
-  }
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; }
