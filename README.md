@@ -1,13 +1,13 @@
 # Athlete Data Hub
 
-A personal training studio as a single web page: today's readiness, a session log, trends, sleep, running, and short notes on how each number is made.
+A personal training deck as a single web page: readiness as tempo, a suggested workout, Fitbit workouts you can tag Push, Pull or Legs, a weekly run goal, vitals with a one-line verdict, and a history view that explains change.
 
 The page is only a shell. It holds no health data, no PIN and no address of the data source. Everything private stays in a Google Sheet and is served by a Google Apps Script web app that checks a 4-digit PIN.
 
 ```
 Fitbit -> Google Health API -> Apps Script (hourly pull) -> Google Sheet
                                         ^
-                 this page  -- PIN -->  WebApi.gs (reads Daily, writes Log)
+                 this page  -- PIN -->  WebApi.gs (reads Daily and Raw, writes tags and the run goal)
 ```
 
 ## Files

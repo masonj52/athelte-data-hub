@@ -168,6 +168,35 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
 .tabs a svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tabs a[aria-current="page"] { color: var(--ink); }
 .tabs a[aria-current="page"] svg { stroke: var(--zone); }
+.next { display: grid; gap: 4px; justify-items: center; text-align: center; }
+.next-main { font: 600 1.625rem/1.15 var(--font-ui); color: var(--ink); text-wrap: balance; }
+.next .call { margin-top: 8px; font-size: 1rem; color: var(--zone); }
+.verdict { font: 600 1.1875rem/1.3 var(--font-ui); color: var(--ink); text-wrap: pretty; }
+.item { display: block; padding: 0; min-height: 0; border-top: 1px solid var(--line); }
+.rows > .item::before { content: none; }
+.rowbtn { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; width: 100%; min-height: 64px; padding: 12px 0; border: 0; background: none; text-align: left; cursor: pointer; }
+.rowbtn::before { content: ""; grid-row: 1 / 3; align-self: stretch; border-radius: 2px; background: var(--zone); }
+.rowbtn:active { background: var(--panel); }
+.item--off .rowbtn::before { background: var(--error); }
+.spark { display: block; width: 96px; height: 28px; justify-self: end; }
+.spark svg { width: 100%; height: 100%; display: block; }
+.detail { display: grid; gap: 16px; padding: 4px 0 20px 16px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.facts dt { font-size: 0.75rem; color: var(--muted); }
+.facts dd { font: 600 0.9375rem/1.3 var(--font-read); color: var(--ink); }
+.zbar { display: flex; gap: 2px; height: 12px; }
+.zbar i { border-radius: 2px; min-width: 4px; }
+.z0, .key i.z0 { background: color-mix(in oklab, var(--zone) 30%, var(--off)); } .z1, .key i.z1 { background: color-mix(in oklab, var(--zone) 60%, var(--off)); } .z2, .key i.z2 { background: var(--zone); } .z3, .key i.z3 { background: var(--ink); }
+.key { flex-wrap: wrap; row-gap: 4px; }
+.tagrow { display: flex; gap: 8px; }
+.tagrow .chip { flex: 1; }
+.chip[aria-pressed="true"] { background: var(--zone); color: var(--bg); font-weight: 600; }
+.bank--tap button { display: grid; gap: 8px; justify-items: center; padding: 4px 0; border: 0; border-radius: 8px; background: none; font-size: 0.75rem; color: var(--muted); cursor: pointer; }
+.bank--tap button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); }
+.goal { display: grid; place-items: center; margin: 0; font: 600 1.25rem/1 var(--font-read); }
+.why { display: grid; gap: 8px; }
+.why li { padding-left: 16px; border-left: 4px solid var(--zone); border-radius: 2px; color: var(--ink); }
+#metric label { min-height: 40px; padding: 0 12px; font-size: 0.9375rem; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 </style>
 </head>
@@ -200,17 +229,24 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
       <div class="dial-read"><span class="bpm" id="bpm"></span><span class="score" id="score"></span></div>
     </div>
   </div>
-  <p class="call" id="call" aria-live="polite"></p>
+  <div class="next" aria-live="polite">
+    <h2>Up next</h2>
+    <p class="next-main" id="next-main"></p>
+    <p class="note" id="next-sub"></p>
+    <p class="call" id="call"></p>
+  </div>
+  <a class="chip center" id="to-tag" href="#workouts" hidden></a>
   <div class="channels">
-    <button type="button" class="ch" id="ch-hrv" data-metric="HRV ms"><span class="label">HRV</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
-    <button type="button" class="ch" id="ch-rhr" data-metric="RHR bpm"><span class="label">Resting HR</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
-    <button type="button" class="ch" id="ch-sleep" data-metric="Sleep h"><span class="label">Sleep</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
+    <button type="button" class="ch" id="ch-hrv" data-metric="hrv"><span class="label">HRV</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
+    <button type="button" class="ch" id="ch-rhr" data-metric="rhr"><span class="label">Resting HR</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
+    <button type="button" class="ch" id="ch-sleep" data-metric="sleep"><span class="label">Sleep</span><span class="read"></span><span class="meter" aria-hidden="true"></span></button>
   </div>
   <div>
     <div class="track-head"><h2>30 days</h2><span class="read" id="track-read"></span></div>
     <div class="wave" id="wave" tabindex="0" role="slider" aria-label="Day"></div>
   </div>
   <button type="button" class="chip center" id="back" hidden>Today</button>
+  <a class="chip center" id="to-recap" href="#history" hidden>Last week’s recap</a>
   <a class="chip center" href="#notes">How the numbers work</a>
 </section>
 
@@ -230,18 +266,35 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
     <ul class="bank" id="wk-bank" aria-label="Calories burned each day"></ul>
     <p class="key"><span><i></i>Active</span><span><i class="b"></i>Resting</span></p>
   </div>
+  <p class="note" id="wk-help" role="status"></p>
   <div class="rows" id="wk-list"></div>
+  <div class="stack"><h2>Four weeks of lifts</h2><dl class="totals totals--3" id="wk-balance"></dl></div>
 </section>
 
 <section class="screen" id="run" aria-labelledby="run-h">
   <header class="top"><h1 id="run-h">Run</h1></header>
   <dl class="totals">
-    <div class="lead"><dt>Last 7 days</dt><dd id="run-7"></dd></div>
+    <div class="lead"><dt>This week</dt><dd id="run-now"></dd></div>
     <div><dt>To go</dt><dd id="run-left"></dd></div>
   </dl>
-  <div class="meter" id="run-meter" role="img" aria-label="Distance against the 9 km weekly target"></div>
-  <div class="stack"><h2>Four weeks</h2><ul class="bank" id="run-bank" aria-label="Kilometres in each of the last four 7 day blocks"></ul></div>
-  <div><h2>Runs</h2><div class="rows" id="run-list"></div></div>
+  <div class="meter" id="run-meter" role="img" aria-label="Distance against this week’s goal"></div>
+  <p class="note" id="run-plan"></p>
+  <div class="stack">
+    <h2>Weekly goal</h2>
+    <div class="step">
+      <button type="button" class="chip icon" id="goal-down" aria-label="Half a kilometre less"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+      <p class="in goal" id="goal-read"></p>
+      <button type="button" class="chip icon" id="goal-up" aria-label="Half a kilometre more"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <p class="note" id="goal-why" role="status"></p>
+    <button type="button" class="chip center" id="goal-auto" hidden>Use the suggestion</button>
+  </div>
+  <div class="stack">
+    <div class="track-head"><h2>Eight weeks, tap one</h2><span class="read" id="run-wk-read"></span></div>
+    <div class="bank bank--tap" id="run-bank" role="group" aria-label="Kilometres in each of the last eight weeks"></div>
+  </div>
+  <dl class="totals totals--3" id="run-wk-stats"></dl>
+  <div class="rows" id="run-list"></div>
   <div class="stack">
     <h2>Pace sheet</h2>
     <div class="step">
@@ -253,69 +306,10 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   </div>
 </section>
 
-<section class="screen" id="log" aria-labelledby="log-h">
-  <header class="top"><h1 id="log-h">Log</h1></header>
-  <form class="stack" id="log-form" novalidate>
-    <label class="field"><span>Date</span><input class="in" type="date" id="f-date" name="date" required aria-describedby="f-help"></label>
-    <fieldset class="seg"><legend>Session</legend>
-      <input type="radio" name="type" id="t-push" value="Push"><label for="t-push">Push</label>
-      <input type="radio" name="type" id="t-pull" value="Pull"><label for="t-pull">Pull</label>
-      <input type="radio" name="type" id="t-legs" value="Legs"><label for="t-legs">Legs</label>
-      <input type="radio" name="type" id="t-run" value="Run"><label for="t-run">Run</label>
-      <input type="radio" name="type" id="t-soccer" value="Soccer"><label for="t-soccer">Soccer</label>
-      <input type="radio" name="type" id="t-kb" value="KB AMRAP"><label for="t-kb">Kettlebell</label>
-      <input type="radio" name="type" id="t-other" value="Other"><label for="t-other">Other</label>
-      <input type="radio" name="type" id="t-rest" value="Rest"><label for="t-rest">Rest</label>
-    </fieldset>
-    <fieldset class="seg"><legend>Shift</legend>
-      <input type="radio" name="shift" id="s-day" value="Day"><label for="s-day">Day</label>
-      <input type="radio" name="shift" id="s-night" value="Night"><label for="s-night">Night</label>
-      <input type="radio" name="shift" id="s-off" value="Off"><label for="s-off">Off</label>
-      <input type="radio" name="shift" id="s-leave" value="Leave"><label for="s-leave">Leave</label>
-    </fieldset>
-    <div class="field"><span>Minutes</span>
-      <div class="step">
-        <button type="button" class="chip icon" id="min-down" aria-label="Five minutes less"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
-        <input class="in" type="number" id="f-min" name="minutes" aria-label="Minutes" min="1" max="600" step="1" inputmode="numeric" autocomplete="off" value="60">
-        <button type="button" class="chip icon" id="min-up" aria-label="Five minutes more"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-      </div>
-    </div>
-    <label class="field"><span>Effort <output id="o-rpe" for="f-rpe">6</output></span><input type="range" id="f-rpe" name="rpe" min="1" max="10" step="1" value="6"></label>
-    <label class="field" id="f-km-wrap" hidden><span>Distance, km</span><input class="in" type="number" id="f-km" name="km" min="0" max="100" step="0.1" inputmode="decimal" autocomplete="off"></label>
-    <label class="field"><span>Left glute <output id="o-glute" for="f-glute">0</output></span><input type="range" id="f-glute" name="glute" min="0" max="10" step="1" value="0"></label>
-    <label class="field"><span>Shoulder <output id="o-shoulder" for="f-shoulder">0</output></span><input type="range" id="f-shoulder" name="shoulder" min="0" max="10" step="1" value="0"></label>
-    <label class="field"><span>Notes</span><input class="in" type="text" id="f-notes" name="notes" maxlength="200" autocomplete="off"></label>
-    <button type="submit" class="chip chip--go" id="f-save">Save session</button>
-    <button type="button" class="chip" id="f-cancel" hidden>Stop editing</button>
-    <p class="note" id="f-help" role="status"></p>
-  </form>
-  <dl class="totals totals--3">
-    <div><dt>Load, 7 days</dt><dd id="st-load7"></dd></div>
-    <div><dt>Ratio</dt><dd id="st-acwr"></dd></div>
-    <div><dt>Streak</dt><dd id="st-streak"></dd></div>
-  </dl>
-  <div><h2>Up next</h2><div class="rows" id="missions"></div></div>
-  <div><h2>Logged</h2><div class="rows" id="ledger"></div></div>
-</section>
-
-<section class="screen" id="history" aria-labelledby="hist-h">
-  <header class="top"><h1 id="hist-h">History</h1></header>
-  <fieldset class="seg" id="metric"><legend class="vh">Metric</legend>
-    <input type="radio" name="metric" id="m-tempo" value="Readiness" checked><label for="m-tempo">Tempo</label>
-    <input type="radio" name="metric" id="m-hrv" value="HRV ms"><label for="m-hrv">HRV</label>
-    <input type="radio" name="metric" id="m-rhr" value="RHR bpm"><label for="m-rhr">Resting HR</label>
-    <input type="radio" name="metric" id="m-sleep" value="Sleep h"><label for="m-sleep">Sleep</label>
-  </fieldset>
-  <fieldset class="seg" id="range"><legend class="vh">Days</legend>
-    <input type="radio" name="range" id="r14" value="14"><label for="r14">14</label>
-    <input type="radio" name="range" id="r30" value="30" checked><label for="r30">30</label>
-    <input type="radio" name="range" id="r90" value="90"><label for="r90">90</label>
-  </fieldset>
-  <div>
-    <div class="track-head"><h2 id="hist-avg"></h2><span class="read" id="hist-read"></span></div>
-    <div class="wave" id="hist-wave" tabindex="0" role="slider" aria-label="Day"></div>
-  </div>
-  <div class="day"><h1 id="hist-day"></h1><dl id="hist-dl"></dl></div>
+<section class="screen" id="vitals" aria-labelledby="vit-h">
+  <header class="top"><h1 id="vit-h">Vitals</h1></header>
+  <p class="verdict" id="verdict" aria-live="polite"></p>
+  <div class="rows rows--tap" id="vit-list"></div>
   <div class="stack">
     <h2>Tonight</h2>
     <label class="field"><span>Wake time</span><input class="in" type="time" id="wake" value="06:40"></label>
@@ -323,17 +317,37 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   </div>
 </section>
 
+<section class="screen" id="history" aria-labelledby="hist-h">
+  <header class="top"><h1 id="hist-h">History</h1></header>
+  <fieldset class="seg" id="metric"><legend class="vh">Metric</legend></fieldset>
+  <fieldset class="seg" id="range"><legend class="vh">Days</legend>
+    <input type="radio" name="range" id="r14" value="14"><label for="r14">14</label>
+    <input type="radio" name="range" id="r30" value="30" checked><label for="r30">30</label>
+    <input type="radio" name="range" id="r90" value="90"><label for="r90">90</label>
+  </fieldset>
+  <p class="verdict" id="hist-week"></p>
+  <div>
+    <div class="track-head"><h2 id="hist-avg"></h2><span class="read" id="hist-read"></span></div>
+    <div class="wave" id="hist-wave" tabindex="0" role="slider" aria-label="Day"></div>
+  </div>
+  <div class="stack"><h2 id="hist-why-h">What lines up with the change</h2><ul class="why" id="hist-why"></ul></div>
+  <div class="stack"><h2>High and low</h2><dl class="totals" id="hist-ends"></dl></div>
+  <div class="day"><h1 id="hist-day"></h1><dl id="hist-dl"></dl></div>
+  <div class="stack"><h2 id="recap-h">Last week</h2><table><thead><tr><th></th><th class="r">Last week</th><th class="r">Change</th></tr></thead><tbody id="recap"></tbody></table></div>
+</section>
+
 <section class="screen notes" id="notes" aria-labelledby="notes-h">
   <header class="top"><h1 id="notes-h">How the numbers work</h1><a class="chip" href="#deck">Deck</a></header>
   <div>
     <details><summary>Tempo</summary><p>Your readiness score from 0 to 100, shown as 90 plus half the score. A score of 60 reads 120. The colour runs red below 40, yellow in the 50s, green from 60 to 70, blue from 80 to 90 and white above 90.</p></details>
-    <details><summary>Readiness score</summary><p>Three readings are measured against your own 60 day baseline and blended: HRV 45 percent, resting heart rate 30 percent with higher counted as worse, and last night’s sleep against a 7.5 hour need 25 percent. The training call under the dial uses the sheet’s zones: 70 or more, 50 to 69, under 50. A night shift or a sleep 3 hours off your usual time holds the call at the middle zone.</p></details>
+    <details><summary>Readiness score</summary><p>Three readings are measured against your own 60 day baseline and blended: HRV 45 percent, resting heart rate 30 percent with higher counted as worse, and last night’s sleep against a 7.5 hour need 25 percent. The effort line uses the sheet’s zones: 70 or more, 50 to 69, under 50.</p></details>
+    <details><summary>Up next</summary><p>Whichever of Push, Pull or Legs you tagged longest ago, once it has had two full days off. On a Legs day a run is added when the weekly distance goal is behind. Under a score of 50 the lift moves to tomorrow and an easy run or mobility takes its place. It only knows the lifts you tag on the Workouts tab.</p></details>
+    <details><summary>Run goal</summary><p>The suggestion is last week’s distance plus about 10 percent, never less than what you have already run this week. With no run last week it falls back to your four week average. The plus and minus buttons override it until you choose the suggestion again.</p></details>
+    <details><summary>Vitals verdict</summary><p>Each vital’s latest reading is compared with your own previous 30 days. A reading counts as off when it sits more than one standard deviation on the worse side: lower HRV, sleep or blood oxygen, higher resting heart rate, breathing rate or skin temperature.</p></details>
+    <details><summary>History</summary><p>The days in range are split into the higher and lower half for the chosen metric. The list shows which of sleep length, bedtime, deep sleep and the previous day’s training differ most between the two halves. It shows what moves together, not what causes what.</p></details>
     <details><summary>HRV</summary><p>One value per night: the variation between heartbeats while you sleep. Reading the trend against a personal baseline follows <a href="https://doi.org/10.1007/s40279-013-0071-8">Plews and colleagues, 2013</a>. The measure is defined in the <a href="https://pubmed.ncbi.nlm.nih.gov/8737210/">1996 Task Force standards</a>.</p></details>
-    <details><summary>Sleep and debt</summary><p>Stage segments less than an hour apart are joined into one sleep and counted on the day you woke. Debt adds the hours you fell short of 7.5 across the last seven nights.</p></details>
-    <details><summary>Calories</summary><p>Burned is everything for the day, resting included, as Google Health totals it. Active is the part above resting. Workout calories are the active burn inside a recorded workout.</p></details>
-    <details><summary>Load and ratio</summary><p>Each logged session scores minutes times effort, after <a href="https://pubmed.ncbi.nlm.nih.gov/11708692/">Foster and colleagues, 2001</a>. The ratio divides a weighted 7 day load by a weighted 28 day load once you have 28 days logged. Treat it as a trend: <a href="https://doi.org/10.1123/ijspp.2019-0864">Impellizzeri and colleagues, 2020</a> found no evidence that steering by it lowers injury risk.</p></details>
+    <details><summary>Calories</summary><p>Burned is everything for the day, resting included, as Google Health totals it. Active is the part above resting. Workout calories are the active burn inside a recorded workout. Walks under 20 minutes are left out of the workout list.</p></details>
   </div>
-  <p class="note">A training aid, not medical advice.</p>
 </section>
 </main>
 
@@ -341,7 +355,7 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   <li><a href="#deck"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>Deck</a></li>
   <li><a href="#workouts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6M8 6v12M16 6v12M20 9v6M8 12h8"/></svg>Workouts</a></li>
   <li><a href="#run"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c4 0 4-12 8-12s4 12 8 12"/></svg>Run</a></li>
-  <li><a href="#log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Log</a></li>
+  <li><a href="#vitals"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>Vitals</a></li>
   <li><a href="#history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h2M7 8v8M11 4v16M15 9v6M19 11v2"/></svg>History</a></li>
 </ul></nav>
 
@@ -349,14 +363,24 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
 (function () {
   'use strict';
   var URL_KEY = 'adh.script', URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/, IDLE_MS = 600000;
-  var NEED = 7.5, RUN_TARGET = 9, NS = 'http://www.w3.org/2000/svg', TICKS = 50;
-  var MISSIONS = ['Push', 'Pull', 'Legs', 'Run', 'Soccer', 'KB AMRAP'], NAMES = { 'KB AMRAP': 'Kettlebell' };
+  var NEED = 7.5, NS = 'http://www.w3.org/2000/svg', TICKS = 50, TAGS = ['Push', 'Pull', 'Legs'];
   var PACES = [['Zone 2', 375, 405], ['Zone 3', 330, 360], ['Zone 4', 290, 320], ['Zone 5', null, 270]];
-  var TABS = ['deck', 'workouts', 'run', 'log', 'history', 'notes'];
-  var CALL = { Green: 'A quality day', Amber: 'Train as planned, capped at 7 of 10', Red: 'A recovery day' };
-  var UNIT = { Readiness: '', 'HRV ms': 'ms', 'RHR bpm': 'bpm', 'Sleep h': 'h' };
+  var TABS = ['deck', 'workouts', 'run', 'vitals', 'history', 'notes'];
+  var CALL = { Green: 'Effort: go hard if you want', Amber: 'Effort: cap it at 7 of 10', Red: 'Effort: keep it easy' };
   var TEXT = { Date: 1, Shift: 1, Zone: 1, Advice: 1, 'Sleep start': 1, 'Sleep end': 1, 'HRV 7d trend': 1, Notes: 1 };
-  var S = { feed: [], sessions: [], workouts: [], calories: {}, state: 'loading', busy: false, note: '', sel: null, hsel: null, metric: 'Readiness', range: 30, week: 0, editing: null, confirming: null };
+  /* every metric the app can chart: key, name, unit, decimals, which way is better, where it lives */
+  var M = [
+    { key: 'tempo', lc: 'tempo', name: 'Tempo', unit: '', dp: 0, dir: 1, f: 'Readiness', map: function (v) { return 90 + v / 2; } },
+    { key: 'hrv', lc: 'HRV', name: 'HRV', unit: 'ms', dp: 0, dir: 1, f: 'HRV ms' },
+    { key: 'rhr', lc: 'resting HR', name: 'Resting HR', unit: 'bpm', dp: 0, dir: -1, f: 'RHR bpm' },
+    { key: 'sleep', lc: 'sleep', name: 'Sleep', unit: 'h', dp: 2, dir: 1, f: 'Sleep h' },
+    { key: 'deep', lc: 'deep sleep', name: 'Deep sleep', unit: 'min', dp: 0, dir: 1, f: 'Deep min' },
+    { key: 'spo2', lc: 'blood oxygen', name: 'Blood oxygen', unit: '%', dp: 1, dir: 1, v: 'spo2' },
+    { key: 'br', lc: 'breathing', name: 'Breathing', unit: 'per min', dp: 1, dir: -1, v: 'br' },
+    { key: 'temp', lc: 'skin temp', name: 'Skin temp', unit: '°C vs usual', dp: 2, dir: -1, v: 'temp', signed: true },
+    { key: 'vo2', lc: 'VO2 max', name: 'VO2 max', unit: '', dp: 1, dir: 1, f: 'VO2max', slow: true }
+  ];
+  var S = { feed: [], workouts: [], calories: {}, vitals: {}, runGoal: null, state: 'loading', busy: false, note: '', sel: null, hsel: null, metric: 'tempo', range: 30, week: 0, open: null, runWeek: 0 };
   var API = { url: '', pin: '' }, idleTimer = 0;
   var $ = function (id) { return document.getElementById(id); };
 
@@ -364,21 +388,28 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   function el(tag, attrs, kids) { var n = document.createElement(tag), k; for (k in attrs || {}) { if (k === 'text') n.textContent = attrs[k]; else if (k === 'class') n.className = attrs[k]; else if (attrs[k] != null) n.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return n; }
   function sv(tag, a) { var n = document.createElementNS(NS, tag), k; for (k in a) n.setAttribute(k, a[k]); return n; }
   function val(node, v, unit) { node.replaceChildren(document.createTextNode(v == null || v === '' ? 'none' : String(v))); if (unit && v != null && v !== '') node.appendChild(el('small', { text: ' ' + unit })); }
+  function fill(node, kids) { node.replaceChildren.apply(node, kids); }
   function utc(key) { var p = String(key).split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); }
   function keyOf(ms) { return new Date(ms).toISOString().slice(0, 10); }
   function addDays(key, n) { return keyOf(utc(key) + n * 86400000); }
+  function dayDiff(a, b) { return Math.round((utc(a) - utc(b)) / 86400000); }
   function localKey() { var n = new Date(); return keyOf(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); }
+  function monday(key) { return addDays(key, -((new Date(utc(key)).getUTCDay() + 6) % 7)); }
   function fmt(key, o) { return new Intl.DateTimeFormat('en-GB', Object.assign({ timeZone: 'UTC' }, o || { day: 'numeric', month: 'short' })).format(utc(key)); }
+  function fmtDay(key) { return fmt(key, { weekday: 'short', day: 'numeric', month: 'short' }); }
   function fmtLong(key) { return fmt(key, { weekday: 'long', day: 'numeric', month: 'long' }); }
   function round(v, dp) { var f = Math.pow(10, dp); return Math.round(v * f) / f; }
   function sum(a) { return a.reduce(function (x, y) { return x + (y || 0); }, 0); }
+  function mean(a) { return a.length ? sum(a) / a.length : null; }
+  function sd(a) { if (a.length < 2) return null; var m = mean(a); return Math.sqrt(sum(a.map(function (x) { return (x - m) * (x - m); })) / (a.length - 1)); }
   function hm(s) { var p = String(s || '').split(':'); if (p.length !== 2) return null; var h = +p[0] + (+p[1]) / 60; return isNaN(h) ? null : h; }
   function clock(hours) { var m = Math.round(((hours % 24) + 24) % 24 * 60) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
   function mmss(sec) { sec = Math.round(sec); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(s).padStart(2, '0'); }
   function hmin(min) { return Math.floor(min / 60) + ':' + String(Math.round(min % 60)).padStart(2, '0'); }
   function thousands(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-  function nameOf(t) { return NAMES[t] || t; }
+  function half(v) { return Math.round(v * 2) / 2; }
   function title(t) { t = String(t || 'Other').replace(/_/g, ' ').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function ago(n) { return n === 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago'; }
   function bpm(score) { return score == null ? null : Math.round(90 + score / 2); }
   var STOPS = [[0, 's0'], [30, 's30'], [40, 's40'], [52, 's52'], [65, 's65'], [85, 's85'], [93, 's93']];
   function hue(score) {
@@ -388,6 +419,13 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   }
   function byDate(key) { for (var i = 0; i < S.feed.length; i++) if (S.feed[i].Date === key) return S.feed[i]; return null; }
   function latest() { return S.feed[S.feed.length - 1] || null; }
+  function metric(key) { for (var i = 0; i < M.length; i++) if (M[i].key === key) return M[i]; return M[0]; }
+  function mv(m, row) { if (!row) return null; var v = m.f ? row[m.f] : (S.vitals[row.Date] || {})[m.v]; if (v == null) return null; return m.map ? m.map(v) : v; }
+  function show1(m, v) { if (v == null) return 'none'; var t = String(round(v, m.dp)); if (m.signed && v > 0) t = '+' + t; return t + (m.unit ? ' ' + m.unit : ''); }
+  function isRun(w) { return /run/i.test(w.type) && w.km > 0; }
+  function isLift(w) { return /strength|weight/i.test(w.type); }
+  function shown(w) { return !(/walk/i.test(w.type) && (w.min || 0) < 20); }
+  function wkey(w) { return w.start.slice(0, 10); }
 
   /* the script behind the PIN */
   function call(action, extra) {
@@ -400,10 +438,8 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
     var head = j.head || [];
     S.feed = (j.days || []).map(function (r) { var o = {}; head.forEach(function (h, i) { var v = r[i] == null ? '' : String(r[i]).trim(); o[h] = TEXT[h] ? v : (v === '' || isNaN(+v) ? null : +v); }); return o; })
       .filter(function (o) { return /^\d{4}-\d{2}-\d{2}$/.test(o.Date); }).reverse();
-    S.sessions = (j.log || []).map(function (x) { return { id: String(x.id), date: x.date, type: String(x.type || ''), shift: x.shift || '', minutes: x.minutes || 0, rpe: x.rpe || 0, km: x.km == null ? null : x.km, glute: x.glute || 0, shoulder: x.shoulder || 0, notes: x.notes || '' }; })
-      .filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(String(x.date)); }).sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
-    S.workouts = (j.workouts || []).filter(function (w) { return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(w.start)); });
-    S.calories = j.calories || {};
+    S.workouts = (j.workouts || []).filter(function (w) { return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(w.start)); }).filter(shown);
+    S.calories = j.calories || {}; S.vitals = j.vitals || {}; S.runGoal = j.runGoal > 0 ? j.runGoal : null;
     S.state = 'ok';
     if (!S.sel || !byDate(S.sel)) S.sel = S.feed.length ? latest().Date : null;
     if (!S.hsel || !byDate(S.hsel)) S.hsel = S.sel;
@@ -425,8 +461,8 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   }
   function lock(msg) {
     clearTimeout(idleTimer); API.pin = '';
-    S.feed = []; S.sessions = []; S.workouts = []; S.calories = {}; S.sel = null; S.hsel = null; S.state = 'loading'; S.editing = null; S.confirming = null; S.note = '';
-    resetForm(); renderAll(); showGate(msg);
+    S.feed = []; S.workouts = []; S.calories = {}; S.vitals = {}; S.runGoal = null; S.sel = null; S.hsel = null; S.state = 'loading'; S.open = null; S.note = '';
+    renderAll(); showGate(msg);
   }
   function unlock(ev) {
     if (ev) ev.preventDefault();
@@ -451,25 +487,36 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
     var fail = function (e) { if (denied(e)) return; S.note = 'The script did not answer. Try again.'; renderAll(); };
     call('pull').then(ingest, function (e) {
       if (e.error !== 'pull_failed' && e.error !== 'bad_request') return fail(e);
-      S.note = e.error === 'pull_failed' ? 'Google Health did not answer, so this is the sheet as it stands. If it keeps happening, choose Athlete Hub, then Reconnect Google Health, in the sheet.' : 'The script is an older version without live pull. Update the deployment in Apps Script.';
+      S.note = e.error === 'pull_failed' ? 'Google Health did not answer, so this is the sheet as it stands. If it keeps happening, choose Athlete Hub, then Reconnect Google Health, in the sheet.' : 'The script is an older version. Update the deployment in Apps Script.';
       return call('feed').then(ingest, fail);
     }).then(function () { S.busy = false; $('reload').removeAttribute('aria-busy'); $('reload').textContent = 'Refresh'; });
   }
+  /* the two small writes: a tag on a workout, the run goal */
+  function write(action, extra, helpNode, busyText) {
+    if (S.busy || !API.pin) return;
+    S.busy = true; helpNode.removeAttribute('data-kind'); helpNode.textContent = busyText;
+    call(action, extra).then(function (j) { S.busy = false; ingest(j); if (helpNode.textContent === busyText) helpNode.textContent = ''; }, function (e) {
+      S.busy = false; if (denied(e)) return;
+      helpNode.setAttribute('data-kind', 'error');
+      helpNode.textContent = e.error === 'bad_request' ? 'The script is an older version. Update the deployment in Apps Script.' : 'That did not reach the sheet. Try once more.';
+    });
+  }
 
-  /* waveform, shared by Deck and History */
-  function wave(box, rows, field, selKey, onPick) {
-    var W = box.clientWidth || 320, H = 104, n = rows.length, s = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' });
-    if (!n) { box.replaceChildren(el('p', { 'class': 'empty', text: S.state === 'ok' ? 'No days on record yet' : 'Reading the sheet' })); return; }
-    var vs = rows.map(function (r) { return r[field]; }).filter(function (v) { return v != null; }), lo = field === 'Readiness' ? 0 : Math.min.apply(null, vs), hi = field === 'Readiness' ? 100 : Math.max.apply(null, vs);
-    if (!(hi > lo)) hi = lo + 1;
+  /* waveform, shared */
+  function wave(box, rows, get, selKey, onPick, h) {
+    var W = box.clientWidth || 320, H = h || 104, n = rows.length, s = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' });
+    if (!n) { box.replaceChildren(el('p', { 'class': 'empty', text: S.state === 'ok' ? 'No days on record yet' : 'Reading the sheet' })); box._pick = null; return; }
+    var vs = rows.map(get).filter(function (v) { return v != null; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    if (!vs.length) { lo = 0; hi = 1; } var pad = (hi - lo) * 0.25 || 1; lo -= pad;
     var band = W / n, bw = Math.max(2, band * 0.62), sel = -1;
     rows.forEach(function (r, i) { if (r.Date === selKey) sel = i; });
     rows.forEach(function (r, i) {
-      var v = r[field], h = v == null ? 3 : 10 + ((v - lo) / (hi - lo)) * (H - 24);
-      s.appendChild(sv('rect', { 'class': sel >= 0 && i > sel ? 'dim' : '', style: 'fill:' + hue(r.Readiness), x: band * i + (band - bw) / 2, y: (H - h) / 2, width: bw, height: h, rx: Math.min(2, bw / 2) }));
+      var v = get(r), hh = v == null ? 3 : 6 + ((v - lo) / (hi - lo)) * (H - 16);
+      s.appendChild(sv('rect', { 'class': sel >= 0 && i > sel ? 'dim' : '', style: 'fill:' + hue(r.Readiness), x: band * i + (band - bw) / 2, y: (H - hh) / 2, width: bw, height: hh, rx: Math.min(2, bw / 2) }));
     });
     if (sel >= 0) { var x = band * (sel + 0.5); s.appendChild(sv('line', { 'class': 'head', x1: x, x2: x, y1: 2, y2: H - 2 })); }
     box.replaceChildren(s);
+    if (!onPick) return;
     box.setAttribute('aria-valuemin', 1); box.setAttribute('aria-valuemax', n); box.setAttribute('aria-valuenow', sel + 1); if (sel >= 0) box.setAttribute('aria-valuetext', fmt(rows[sel].Date));
     box._pick = function (i) { i = Math.max(0, Math.min(n - 1, i)); if (rows[i].Date !== selKey) onPick(rows[i].Date); };
     box._index = function (ev) { var b = box.getBoundingClientRect(); return Math.floor((ev.clientX - b.left) / (b.width / n)); };
@@ -482,235 +529,300 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   }
   function meter(node, lit) { node.replaceChildren(); for (var i = 0; i < 12; i++) node.appendChild(el('i', { 'class': i < lit ? 'on' : '' })); }
   function level(v, span) { return v == null ? 0 : Math.max(1, Math.min(12, Math.round(6 + (v / span) * 6))); }
+  function bank(node, cols, onTap, selIndex) {
+    var max = Math.max.apply(null, cols.map(function (c) { return Math.max(c.total || 0, c.mark || 0); }).concat([1]));
+    fill(node, cols.map(function (c, i) {
+      var col = el('span', { 'class': 'col' }), total = c.total ? Math.max(1, Math.round(c.total / max * 10)) : 0, act = c.total && c.active ? Math.max(1, Math.round(c.active / max * 10)) : (c.solid ? total : 0);
+      for (var s = 9; s >= 0; s--) col.appendChild(el('i', { 'class': s < total - act ? 'base' : s < total ? 'act' : '' }));
+      var kids = [el('span', { 'class': 'n', text: c.top }), col, c.label];
+      if (!onTap) return el('li', {}, kids);
+      var b = el('button', { type: 'button', 'aria-pressed': i === selIndex ? 'true' : 'false', 'aria-label': c.aria }, kids);
+      b.addEventListener('click', function () { onTap(i); });
+      return b;
+    }));
+  }
+
+  /* rotation: the lift tagged longest ago that has had two full days off */
+  function rotation(ref) {
+    var last = {}, best = null;
+    S.workouts.forEach(function (w) { var k = wkey(w); if (w.tag && k < ref && (!last[w.tag] || k > last[w.tag])) last[w.tag] = k; });
+    TAGS.forEach(function (t) { var gap = last[t] ? dayDiff(ref, last[t]) : 999; if (gap >= 3 && (!best || gap > best.gap)) best = { tag: t, gap: gap, last: last[t] || null }; });
+    return { best: best, last: last };
+  }
+  function runs() { return S.workouts.filter(isRun); }
+  function weekKm(start) { var end = addDays(start, 6); return round(sum(runs().filter(function (w) { var k = wkey(w); return k >= start && k <= end; }).map(function (w) { return w.km; })), 2); }
+  function suggestedGoal() {
+    var m = monday(localKey()), lw = weekKm(addDays(m, -7)), tw = weekKm(m), base;
+    if (lw > 0) base = lw * 1.1;
+    else { var past = [1, 2, 3, 4].map(function (i) { return weekKm(addDays(m, -7 * i)); }).filter(function (v) { return v > 0; }); base = past.length ? mean(past) : 9; }
+    return { km: Math.max(3, Math.ceil(Math.max(base, tw) * 2) / 2), lw: lw, tw: tw };
+  }
+  function goal() { return S.runGoal || suggestedGoal().km; }
 
   /* deck */
+  function renderNext() {
+    var today = localKey(), t = latest(), fresh = t && dayDiff(today, t.Date) <= 1, score = fresh ? t.Readiness : null;
+    var done = S.workouts.filter(function (w) { return wkey(w) === today; }), rot = rotation(today), r = rot.best, main, sub = [];
+    var left = Math.max(0, round(goal() - weekKm(monday(today)), 1));
+    if (S.state !== 'ok') { main = ''; }
+    else if (done.length) { main = 'Done: ' + done.map(function (w) { return w.tag || title(w.type); }).join(', '); if (r) sub.push(r.tag + ' is next'); }
+    else if (score != null && score < 50) { main = 'Easy run or mobility'; if (r) sub.push(r.tag + ' moves to tomorrow'); }
+    else if (r) {
+      main = r.tag; if (r.tag === 'Legs' && left >= 1) main += ' and a ' + half(Math.max(2, Math.min(left, 5))) + ' km run';
+      sub.push(r.last ? 'last ' + r.tag.toLowerCase() + ' ' + ago(r.gap) : 'no ' + r.tag.toLowerCase() + ' tagged yet');
+    } else {
+      main = 'Rest day'; var soon = null;
+      TAGS.forEach(function (g) { if (rot.last[g]) { var wait = 3 - dayDiff(today, rot.last[g]); if (soon == null || wait < soon.wait) soon = { tag: g, wait: wait }; } });
+      if (soon) sub.push(soon.tag + (soon.wait <= 1 ? ' tomorrow' : ' in ' + soon.wait + ' days'));
+    }
+    if (fresh && S.state === 'ok') {
+      if (t['Sleep h'] != null && t['Sleep h'] < NEED - 1) sub.push('sleep ' + round(NEED - t['Sleep h'], 1) + ' h short');
+      if (t['HRV 7d trend'] === 'suppressed') sub.push('HRV low this week');
+    }
+    $('next-main').textContent = main; $('next-sub').textContent = sub.join(', ');
+    $('call').textContent = fresh && S.state === 'ok' ? (CALL[t.Zone] || '') : '';
+    var untagged = S.workouts.filter(function (w) { return isLift(w) && !w.tag && dayDiff(today, wkey(w)) <= 14; }).length;
+    $('to-tag').hidden = !untagged; $('to-tag').textContent = untagged === 1 ? '1 lift to tag' : untagged + ' lifts to tag';
+    $('to-recap').hidden = !(S.state === 'ok' && new Date(utc(today)).getUTCDay() === 1);
+  }
   function renderDeck() {
     var d = byDate(S.sel), t = latest(), b = d ? bpm(d.Readiness) : null, last = d && t && d.Date === t.Date;
     document.body.style.setProperty('--zone', hue(t ? t.Readiness : null));
     $('deck').style.setProperty('--zone', hue(d ? d.Readiness : null));
     $('notice').hidden = !S.note; $('notice').textContent = S.note;
-    $('day').textContent = !d ? (S.state === 'ok' ? 'No days yet' : 'Reading') : last ? 'Today, ' + fmt(d.Date) : fmtLong(d.Date);
+    $('day').textContent = !d ? (S.state === 'ok' ? 'No days yet' : 'Reading') : last ? fmtDay(d.Date) : fmtLong(d.Date);
     $('bpm').textContent = b == null ? '' : b; $('score').textContent = d && d.Readiness != null ? d.Readiness : '';
     var on = b == null ? -1 : Math.round((b - 90) / 50 * TICKS);
     [].forEach.call($('ticks').children, function (k, i) { k.setAttribute('class', 'tick' + (i <= on ? ' on' : '')); });
-    $('call').textContent = !d ? '' : CALL[d.Zone] || 'Still building your baseline';
     var gap = d && d['Sleep h'] != null ? d['Sleep h'] - NEED : null;
     [['ch-hrv', d && d['HRV ms'], 'ms', level(d && d['HRV z'], 3)], ['ch-rhr', d && d['RHR bpm'], 'bpm', level(d && d['RHR Δ bpm'] != null ? -d['RHR Δ bpm'] : null, 8)], ['ch-sleep', d && d['Sleep h'], 'h', level(gap, 3)]].forEach(function (c) {
       var node = $(c[0]); val(node.querySelector('.read'), c[1], c[2]); meter(node.querySelector('.meter'), c[3]);
     });
     $('track-read').textContent = d ? fmt(d.Date) + '  ' + (b == null ? '' : b) : '';
     $('back').hidden = !d || last;
-    wave($('wave'), S.feed.slice(-30), 'Readiness', S.sel, function (key) { S.sel = key; renderDeck(); });
+    wave($('wave'), S.feed.slice(-30), function (r) { return r.Readiness; }, S.sel, function (key) { S.sel = key; renderDeck(); });
+    renderNext();
   }
 
   /* workouts */
-  function weekStart() { var today = localKey(), dow = (new Date(utc(today)).getUTCDay() + 6) % 7; return addDays(today, -dow + 7 * S.week); }
-  function bank(node, cols) {
-    var max = Math.max.apply(null, cols.map(function (c) { return c.total || 0; }).concat([1]));
-    node.replaceChildren.apply(node, cols.map(function (c) {
-      var col = el('span', { 'class': 'col' }), total = c.total ? Math.max(1, Math.round(c.total / max * 10)) : 0, act = c.total && c.active ? Math.max(1, Math.round(c.active / max * 10)) : (c.solid ? total : 0);
-      for (var s = 9; s >= 0; s--) col.appendChild(el('i', { 'class': s < total - act ? 'base' : s < total ? 'act' : '' }));
-      return el('li', {}, [el('span', { 'class': 'n', text: c.top }), col, c.label]);
-    }));
+  function zonesBar(w) {
+    var z = (w.zones || []).map(function (v) { return v || 0; }), tot = sum(z);
+    if (!tot) return null;
+    var bar = el('div', { 'class': 'zbar', role: 'img', 'aria-label': 'Minutes in each heart rate zone' });
+    z.forEach(function (v, i) { if (v) bar.appendChild(el('i', { 'class': 'z' + i, style: 'flex-grow:' + v })); });
+    return el('div', { 'class': 'stack' }, [bar, el('p', { 'class': 'key' }, ['Light', 'Moderate', 'Vigorous', 'Peak'].map(function (n, i) { return z[i] ? el('span', {}, [el('i', { 'class': 'z' + i }), n + ' ' + z[i] + ' min']) : null; }))]);
   }
-  function workoutRow(w) {
-    var bits = [w.min != null ? hmin(w.min) : '', w.km ? w.km + ' km' : w.hr ? 'avg ' + Math.round(w.hr) : ''].filter(Boolean).join('  ');
-    var k = el('span', { 'class': 'k' }); if (w.kcal != null) val(k, Math.round(w.kcal), 'kcal'); else k.textContent = '';
-    return el('div', {}, [el('b', { text: title(w.type) }), k, el('span', { text: fmt(w.start.slice(0, 10), { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + w.start.slice(11) }), el('span', { 'class': 'r', text: bits })]);
+  function detail(w) {
+    var facts = [['Time', w.min != null ? hmin(w.min) : ''], ['Calories', w.kcal != null ? Math.round(w.kcal) + ' kcal' : ''], ['Average HR', w.hr ? Math.round(w.hr) + ' bpm' : ''], ['Zone minutes', w.azm ? String(w.azm) : ''], ['Distance', w.km ? w.km + ' km' : ''], ['Pace', w.km && w.min ? mmss(w.min * 60 / w.km) + ' per km' : ''], ['Per minute', w.kcal && w.min ? round(w.kcal / w.min, 1) + ' kcal' : '']].filter(function (f) { return f[1]; });
+    var box = el('div', { 'class': 'detail' }, [el('dl', { 'class': 'facts' }, facts.map(function (f) { return el('div', {}, [el('dt', { text: f[0] }), el('dd', { text: f[1] })]); })), zonesBar(w)]);
+    if (isLift(w)) {
+      var expect = w.tag || ((rotation(wkey(w)).best || {}).tag) || 'Push', seg = el('div', { 'class': 'tagrow', role: 'group', 'aria-label': 'Which lift was this' });
+      TAGS.forEach(function (t) {
+        var b = el('button', { type: 'button', 'class': 'chip' + (t === expect && !w.tag ? ' chip--go' : ''), 'aria-pressed': w.tag === t ? 'true' : 'false', text: t });
+        b.addEventListener('click', function () { write('tag', { start: w.start, tag: w.tag === t ? '' : t }, $('wk-help'), 'Saving the tag'); });
+        seg.appendChild(b);
+      });
+      box.appendChild(seg);
+    }
+    return box;
+  }
+  function workoutRow(w, runStyle) {
+    var open = S.open === w.start, k = el('span', { 'class': 'k' });
+    if (runStyle) val(k, w.km, 'km'); else if (w.kcal != null) val(k, Math.round(w.kcal), 'kcal'); else k.textContent = '';
+    var name = runStyle ? fmtDay(wkey(w)) : (w.tag || title(w.type)) + (isLift(w) && !w.tag ? ', tap to tag' : '');
+    var subL = runStyle ? (w.min ? mmss(w.min * 60 / w.km) + ' per km' : '') : fmtDay(wkey(w)) + ', ' + w.start.slice(11);
+    var subR = [w.min != null ? hmin(w.min) : '', runStyle ? (w.hr ? 'avg ' + Math.round(w.hr) : '') : (w.km ? w.km + ' km' : w.hr ? 'avg ' + Math.round(w.hr) : '')].filter(Boolean).join('  ');
+    var b = el('button', { type: 'button', 'class': 'rowbtn', 'aria-expanded': open ? 'true' : 'false' }, [el('b', { text: name }), k, el('span', { text: subL }), el('span', { 'class': 'r', text: subR })]);
+    b.addEventListener('click', function () { S.open = open ? null : w.start; renderWorkouts(); renderRun(); });
+    return el('div', { 'class': 'item' }, [b, open ? detail(w) : null]);
   }
   function renderWorkouts() {
-    var a = weekStart(), days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return addDays(a, i); }), end = days[6];
-    $('wk-h').textContent = fmt(a, { day: 'numeric', month: sameMonth(a, end) ? undefined : 'short' }) + ' to ' + fmt(end);
+    var a = addDays(monday(localKey()), 7 * S.week), days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return addDays(a, i); }), end = days[6];
+    $('wk-h').textContent = (a.slice(0, 7) === end.slice(0, 7) ? fmt(a, { day: 'numeric' }) : fmt(a)) + ' to ' + fmt(end);
     $('wk-next').disabled = S.week >= 0; $('wk-prev').disabled = S.week <= -12;
-    var ws = S.workouts.filter(function (w) { var k = w.start.slice(0, 10); return k >= a && k <= end; });
+    var ws = S.workouts.filter(function (w) { var k = wkey(w); return k >= a && k <= end; });
     var cal = days.map(function (k) { return S.calories[k] || [null, null]; }), burned = sum(cal.map(function (c) { return c[0]; }));
     val($('wk-burn'), burned ? thousands(burned) : null, 'kcal');
     var kc = sum(ws.map(function (w) { return w.kcal; })); val($('wk-kcal'), ws.length && kc ? thousands(kc) : null, 'kcal');
-    $('wk-n').textContent = ws.length; val($('wk-time'), hmin(sum(ws.map(function (w) { return w.min; }))), 'h');
+    $('wk-n').textContent = S.state === 'ok' ? ws.length : ''; val($('wk-time'), S.state === 'ok' ? hmin(sum(ws.map(function (w) { return w.min; }))) : null, 'h');
     bank($('wk-bank'), days.map(function (k, i) { return { total: cal[i][0], active: cal[i][1], top: cal[i][0] ? (cal[i][0] / 1000).toFixed(1) : '', label: 'MTWTFSS'.charAt(i) }; }));
-    var list = $('wk-list');
-    if (!ws.length) list.replaceChildren(el('p', { 'class': 'empty', text: S.state === 'ok' ? 'No workouts recorded this week' : 'Reading the sheet' }));
-    else list.replaceChildren.apply(list, ws.map(workoutRow));
+    if (!ws.length) fill($('wk-list'), [el('p', { 'class': 'empty', text: S.state === 'ok' ? 'No workouts recorded this week' : 'Reading the sheet' })]);
+    else fill($('wk-list'), ws.map(function (w) { return workoutRow(w, false); }));
+    var from = addDays(localKey(), -27), counts = {}; TAGS.forEach(function (t) { counts[t] = 0; });
+    S.workouts.forEach(function (w) { if (w.tag && wkey(w) >= from && counts[w.tag] != null) counts[w.tag]++; });
+    fill($('wk-balance'), TAGS.map(function (t) { var dd = el('dd'); val(dd, S.state === 'ok' ? counts[t] : null); return el('div', {}, [el('dt', { text: t }), dd]); }));
   }
-  function sameMonth(a, b) { return a.slice(0, 7) === b.slice(0, 7); }
 
   /* run */
   function renderRun() {
-    var t = latest(), k7 = t && t['Run km 7d'] != null ? t['Run km 7d'] : null;
-    val($('run-7'), k7, 'of ' + RUN_TARGET + ' km'); val($('run-left'), k7 == null ? null : Math.max(0, round(RUN_TARGET - k7, 1)), 'km');
-    meter($('run-meter'), k7 == null ? 0 : Math.min(12, Math.round(k7 / RUN_TARGET * 12)));
-    var blocks = [];
-    for (var k = 3; k >= 0; k--) { var end = S.feed.length - 7 * k; if (end <= 0) continue; var blk = S.feed.slice(Math.max(0, end - 7), end); blocks.push({ total: round(sum(blk.map(function (r) { return r['Run km']; })), 1), ends: blk[blk.length - 1].Date }); }
-    bank($('run-bank'), blocks.map(function (b) { return { total: b.total, solid: true, top: String(b.total), label: 'to ' + fmt(b.ends) }; }));
-    var runs = S.workouts.filter(function (w) { return /run/i.test(w.type) && w.km; }).slice(0, 12), list = $('run-list');
-    if (!runs.length) list.replaceChildren(el('p', { 'class': 'empty', text: S.state === 'ok' ? 'No runs recorded yet' : 'Reading the sheet' }));
-    else list.replaceChildren.apply(list, runs.map(function (w) {
-      var k = el('span', { 'class': 'k' }); val(k, w.km, 'km');
-      return el('div', {}, [el('b', { text: fmt(w.start.slice(0, 10), { weekday: 'short', day: 'numeric', month: 'short' }) }), k, el('span', { text: w.min ? mmss(w.min * 60 / w.km) + ' per km' : '' }), el('span', { 'class': 'r', text: [w.min != null ? hmin(w.min) : '', w.kcal != null ? Math.round(w.kcal) + ' kcal' : ''].filter(Boolean).join('  ') })]);
-    }));
+    var today = localKey(), m0 = monday(today), sg = suggestedGoal(), g = goal(), now = weekKm(m0), left = Math.max(0, round(g - now, 1)), daysLeft = 7 - dayDiff(today, m0);
+    var ok = S.state === 'ok';
+    val($('run-now'), ok ? now : null, 'of ' + g + ' km'); val($('run-left'), ok ? left : null, 'km');
+    meter($('run-meter'), ok ? Math.min(12, Math.round(now / g * 12)) : 0);
+    $('run-plan').textContent = !ok ? '' : left <= 0 ? 'Goal met for the week.' : daysLeft <= 1 ? left + ' km to go today.' : left + ' km over ' + daysLeft + ' days: ' + (left > 6 ? 'two runs of ' + half(left / 2) + ' km' : 'one run of ' + left + ' km') + ' would do it.';
+    $('goal-read').textContent = ok ? g + ' km' : '';
+    $('goal-why').textContent = !ok ? '' : (S.runGoal ? 'Your own goal. The suggestion is ' + sg.km + ' km' : 'Suggested') + ': last week ' + sg.lw + ' km, this week ' + sg.tw + ' km so far.';
+    $('goal-auto').hidden = !S.runGoal; $('goal-down').disabled = !ok || g <= 1; $('goal-up').disabled = !ok || g >= 150;
+    var weeks = [7, 6, 5, 4, 3, 2, 1, 0].map(function (i) { var st = addDays(m0, -7 * i); return { start: st, km: weekKm(st) }; });
+    var selIdx = 7 + S.runWeek, wk = weeks[selIdx];
+    bank($('run-bank'), weeks.map(function (w, i) { return { total: w.km, solid: true, mark: i === 7 ? g : 0, top: w.km ? String(round(w.km, 1)) : '', label: fmt(w.start, { day: 'numeric' }), aria: 'Week of ' + fmt(w.start) + ', ' + w.km + ' km' }; }), function (i) { S.runWeek = i - 7; S.open = null; renderRun(); }, selIdx);
+    var end = addDays(wk.start, 6), list = runs().filter(function (w) { var k = wkey(w); return k >= wk.start && k <= end; });
+    $('run-wk-read').textContent = fmt(wk.start) + ' to ' + fmt(end);
+    var mins = sum(list.map(function (w) { return w.min; })), prev = weekKm(addDays(wk.start, -7));
+    var stats = [['Runs', ok ? list.length : null, ''], ['Pace', list.length && wk.km ? mmss(mins * 60 / wk.km) : null, 'per km'], ['Against prior', ok ? (wk.km - prev >= 0 ? '+' : '') + round(wk.km - prev, 1) : null, 'km']];
+    fill($('run-wk-stats'), stats.map(function (s) { var dd = el('dd'); val(dd, s[1], s[2]); return el('div', {}, [el('dt', { text: s[0] }), dd]); }));
+    if (!list.length) fill($('run-list'), [el('p', { 'class': 'empty', text: ok ? 'No runs that week' : 'Reading the sheet' })]);
+    else fill($('run-list'), list.map(function (w) { return workoutRow(w, true); }));
     renderPace();
   }
+  function setGoal(km) { write('goal', { km: km }, $('goal-why'), 'Saving the goal'); }
   function renderPace() {
     var km = +$('pace-km').value;
-    $('pace-body').replaceChildren.apply($('pace-body'), PACES.map(function (p) {
+    fill($('pace-body'), PACES.map(function (p) {
       var pace = p[1] == null ? 'under ' + mmss(p[2]) : mmss(p[1]) + ' to ' + mmss(p[2]);
       var time = !(km > 0) ? '' : p[1] == null ? 'under ' + mmss(p[2] * km) : mmss(p[1] * km) + ' to ' + mmss(p[2] * km);
       return el('tr', {}, [el('td', { text: p[0] }), el('td', { text: pace }), el('td', { 'class': 'r', text: time })]);
     }));
   }
 
-  /* log */
-  function checked(name) { var n = document.querySelector('input[name="' + name + '"]:checked'); return n ? n.value : ''; }
-  function setChecked(name, value) { document.querySelectorAll('input[name="' + name + '"]').forEach(function (n) { n.checked = n.value === value; }); }
-  function help(msg, kind) { var h = $('f-help'); h.textContent = msg; if (kind) h.setAttribute('data-kind', kind); else h.removeAttribute('data-kind'); }
-  function syncForm() {
-    var type = checked('type'), rest = type === 'Rest';
-    $('f-min').disabled = rest; $('f-rpe').disabled = rest; $('min-down').disabled = rest; $('min-up').disabled = rest;
-    $('f-km-wrap').hidden = !(type === 'Run' || type === 'Soccer');
-    $('o-rpe').textContent = $('f-rpe').value; $('o-glute').textContent = $('f-glute').value; $('o-shoulder').textContent = $('f-shoulder').value;
-    $('f-save').textContent = S.editing ? 'Save changes' : 'Save session'; $('f-cancel').hidden = !S.editing; $('f-save').disabled = S.busy || S.state !== 'ok';
+  /* vitals */
+  function reading(m) {
+    for (var i = S.feed.length - 1; i >= Math.max(0, S.feed.length - 4); i--) { var v = mv(m, S.feed[i]); if (v != null) { var base = S.feed.slice(Math.max(0, i - 30), i).map(function (r) { return mv(m, r); }).filter(function (x) { return x != null; }); var mu = mean(base), s = sd(base); return { v: v, date: S.feed[i].Date, mean: mu, z: base.length >= 7 && s > 0 ? (v - mu) / s : null }; } }
+    return null;
   }
-  function resetForm() {
-    S.editing = null; $('f-date').value = localKey(); setChecked('type', ''); setChecked('shift', '');
-    $('f-min').value = 60; $('f-rpe').value = 6; $('f-km').value = ''; $('f-glute').value = 0; $('f-shoulder').value = 0; $('f-notes').value = ''; help(''); syncForm();
-  }
-  function startEntry(type) { resetForm(); setChecked('type', type); syncForm(); window.scrollTo(0, 0); }
-  function editEntry(s) {
-    S.editing = s.id; $('f-date').value = s.date; setChecked('type', s.type); setChecked('shift', s.shift);
-    $('f-min').value = s.minutes || 60; $('f-rpe').value = s.rpe || 6; $('f-km').value = s.km == null ? '' : s.km; $('f-glute').value = s.glute; $('f-shoulder').value = s.shoulder; $('f-notes').value = s.notes;
-    help('Editing the entry from ' + fmt(s.date) + '.'); syncForm(); window.scrollTo(0, 0);
-  }
-  function write(action, extra, busyText, doneText) {
-    if (S.busy) return;
-    S.busy = true; $('f-save').setAttribute('aria-busy', 'true'); help(busyText); syncForm();
-    call(action, extra).then(function (j) { S.busy = false; ingest(j); resetForm(); help(doneText); }, function (e) {
-      S.busy = false; if (denied(e)) return;
-      help(e.error === 'invalid' ? 'The sheet refused that entry. Check the date and the numbers.' : 'That did not reach the sheet. Check your connection and try once more.', 'error');
-    }).then(function () { $('f-save').removeAttribute('aria-busy'); syncForm(); });
-  }
-  function saveEntry(ev) {
-    ev.preventDefault();
-    var date = $('f-date').value, type = checked('type'), rest = type === 'Rest', minutes = Math.round(+$('f-min').value), bad = null;
-    $('f-date').removeAttribute('aria-invalid'); $('f-min').removeAttribute('aria-invalid');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { bad = $('f-date'); help('Pick the date of the session.', 'error'); }
-    else if (!type) { bad = $('t-push'); help('Choose which session this was, or Rest for a day off.', 'error'); }
-    else if (!rest && !(minutes >= 1 && minutes <= 600)) { bad = $('f-min'); help('Minutes should be between 1 and 600.', 'error'); }
-    if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.focus(); return; }
-    var km = $('f-km').value === '' || $('f-km-wrap').hidden ? null : round(+$('f-km').value, 2);
-    write('save', { entry: { id: S.editing || '', date: date, type: type, shift: checked('shift'), minutes: rest ? 0 : minutes, rpe: rest ? 0 : +$('f-rpe').value, km: km, glute: +$('f-glute').value, shoulder: +$('f-shoulder').value, notes: $('f-notes').value.trim().slice(0, 200) } }, 'Saving to your sheet', 'Saved to the Log tab.');
-  }
-  function loadOf(s) { return s.type === 'Rest' ? 0 : (s.minutes || 0) * (s.rpe || 0); }
-  function lastDone(type) {
-    var best = null;
-    S.sessions.forEach(function (s) { if (s.type === type && (!best || s.date > best)) best = s.date; });
-    if (type === 'Run') S.feed.forEach(function (r) { if (r['Run km'] > 0 && (!best || r.Date > best)) best = r.Date; });
-    return best;
-  }
-  function renderLog() {
-    var days = {}, first = null, today = localKey(), k, series = [], acute = 0, chronic = 0;
-    S.sessions.forEach(function (s) { days[s.date] = (days[s.date] || 0) + loadOf(s); if (!first || s.date < first) first = s.date; });
-    if (first) for (k = first; k <= today; k = addDays(k, 1)) { var l = days[k] || 0; series.push(l); acute += (2 / 8) * (l - acute); chronic += (2 / 29) * (l - chronic); }
-    val($('st-load7'), first ? sum(series.slice(-7)) : null);
-    if (series.length >= 28 && chronic > 0) val($('st-acwr'), round(acute / chronic, 2)); else val($('st-acwr'), first ? Math.max(1, 28 - series.length) : 28, 'days to go');
-    var streak = 0, logged = {}; S.sessions.forEach(function (s) { logged[s.date] = 1; });
-    for (k = logged[today] ? today : addDays(today, -1); logged[k]; k = addDays(k, -1)) streak++;
-    val($('st-streak'), streak, streak === 1 ? 'day' : 'days');
-    var items = MISSIONS.map(function (m) { var d = lastDone(m); return { name: m, days: d ? Math.max(0, Math.round((utc(today) - utc(d)) / 86400000)) : null }; });
-    items.sort(function (a, b) { return (b.days == null ? 1e6 : b.days) - (a.days == null ? 1e6 : a.days); });
-    $('missions').replaceChildren.apply($('missions'), items.map(function (it) {
-      var b = el('button', { type: 'button', 'class': 'chip', 'aria-label': 'Log ' + nameOf(it.name), text: 'Log' });
-      b.addEventListener('click', function () { startEntry(it.name); });
-      return el('div', {}, [el('b', { text: nameOf(it.name) }), b, el('span', { text: it.days == null ? 'not logged yet' : it.days === 0 ? 'today' : it.days === 1 ? 'yesterday' : it.days + ' days ago' })]);
-    }));
-    var ledger = $('ledger');
-    if (!S.sessions.length) { ledger.replaceChildren(el('p', { 'class': 'empty', text: S.state === 'ok' ? 'Nothing logged yet' : 'Reading the sheet' })); syncForm(); return; }
-    ledger.replaceChildren.apply(ledger, S.sessions.slice(0, 60).map(function (s) {
-      var rest = s.type === 'Rest', extra = [s.shift, s.glute ? 'glute ' + s.glute : '', s.shoulder ? 'shoulder ' + s.shoulder : '', s.notes].filter(Boolean).join(', ');
-      var k = el('span', { 'class': 'k' }); if (rest) k.textContent = ''; else val(k, loadOf(s), 'load');
-      var acts = el('div', { 'class': 'acts' });
-      if (S.confirming === s.id) {
-        var yes = el('button', { type: 'button', 'class': 'chip', text: 'Delete it' }), no = el('button', { type: 'button', 'class': 'chip', text: 'Keep it' });
-        yes.addEventListener('click', function () { S.confirming = null; renderLog(); write('delete', { id: s.id }, 'Deleting from your sheet', 'Deleted from the Log tab.'); });
-        no.addEventListener('click', function () { S.confirming = null; renderLog(); });
-        acts.appendChild(yes); acts.appendChild(no);
-      } else {
-        var ed = el('button', { type: 'button', 'class': 'chip', text: 'Edit', 'aria-label': 'Edit ' + nameOf(s.type) + ' on ' + fmt(s.date) }), del = el('button', { type: 'button', 'class': 'chip', text: 'Delete', 'aria-label': 'Delete ' + nameOf(s.type) + ' on ' + fmt(s.date) });
-        ed.addEventListener('click', function () { editEntry(s); }); del.addEventListener('click', function () { S.confirming = s.id; renderLog(); });
-        acts.appendChild(ed); acts.appendChild(del);
-      }
-      return el('div', {}, [el('b', { text: nameOf(s.type) }), k, el('span', { text: fmt(s.date, { weekday: 'short', day: 'numeric', month: 'short' }) + (extra ? ', ' + extra : '') }), el('span', { 'class': 'r', text: rest ? '' : s.minutes + ' min  effort ' + s.rpe + (s.km != null ? '  ' + s.km + ' km' : '') }), acts]);
-    }));
-    syncForm();
-  }
-
-  /* history */
-  function renderHistory() {
-    var rows = S.feed.slice(-S.range), f = S.metric, d = byDate(S.hsel);
-    if (d && rows.indexOf(d) < 0) { d = rows[rows.length - 1] || null; S.hsel = d ? d.Date : null; }
-    var show = function (r) { var v = r ? r[f] : null; return v == null ? 'none' : (f === 'Readiness' ? bpm(v) : v) + (UNIT[f] ? ' ' + UNIT[f] : ''); };
-    var vs = rows.map(function (r) { return r[f]; }).filter(function (v) { return v != null; }), mean = vs.length ? sum(vs) / vs.length : null;
-    $('hist-avg').textContent = mean == null ? '' : 'Average ' + (f === 'Readiness' ? bpm(mean) : round(mean, f === 'Sleep h' ? 2 : 0)) + (UNIT[f] ? ' ' + UNIT[f] : '');
-    $('hist-read').textContent = d ? fmt(d.Date) + '  ' + show(d) : '';
-    wave($('hist-wave'), rows, f, S.hsel, function (key) { S.hsel = key; renderHistory(); });
-    $('hist-day').textContent = d ? fmtLong(d.Date) : '';
-    var logged = d ? S.sessions.filter(function (s) { return s.date === d.Date; }).map(function (s) { return s.type === 'Rest' ? 'Rest' : nameOf(s.type) + ', ' + s.minutes + ' min at ' + s.rpe; }).join('; ') : '';
-    var cal = d ? S.calories[d.Date] : null;
-    var items = !d ? [] : [
-      ['Tempo', d.Readiness == null ? '' : bpm(d.Readiness) + ', score ' + d.Readiness],
-      ['Sleep', d['Sleep h'] == null ? '' : d['Sleep h'] + ' h' + (hm(d['Sleep start']) != null ? ', ' + clock(hm(d['Sleep start'])) + ' to ' + clock(hm(d['Sleep end'])) : '')],
-      ['Stages', d['Sleep h'] == null ? '' : 'deep ' + (d['Deep min'] || 0) + ', REM ' + (d['REM min'] || 0) + ', light ' + (d['Core min'] || 0) + ' min'],
-      ['Naps', d['Nap min'] ? d['Nap min'] + ' min' : ''], ['Sleep debt', d['Sleep debt 7d h'] == null ? '' : d['Sleep debt 7d h'] + ' h over 7 nights'],
-      ['HRV', d['HRV ms'] == null ? '' : d['HRV ms'] + ' ms' + (d['HRV 7d trend'] ? ', week ' + d['HRV 7d trend'] : '')], ['Resting HR', d['RHR bpm'] == null ? '' : d['RHR bpm'] + ' bpm'],
-      ['Burned', cal && cal[0] ? thousands(cal[0]) + ' kcal' + (cal[1] ? ', ' + thousands(cal[1]) + ' active' : '') : ''],
-      ['Run', d['Run km'] ? d['Run km'] + ' km' : ''], ['Logged', logged], ['Shift', d.Shift || '']
-    ].filter(function (p) { return p[1]; });
-    $('hist-dl').replaceChildren.apply($('hist-dl'), items.map(function (p) { return el('div', {}, [el('dt', { text: p[0] }), el('dd', { text: p[1] })]); }));
+  function renderVitals() {
+    var list = M.filter(function (m) { return m.key !== 'tempo'; }), bad = [], good = [], seen = 0;
+    var rows = list.map(function (m) {
+      var r = reading(m), state = '', k = el('span', { 'class': 'k' });
+      if (r) { seen++; val(k, (m.signed && r.v > 0 ? '+' : '') + round(r.v, m.dp), m.unit); } else k.textContent = '';
+      if (r && r.z != null && !m.slow) { var adv = r.z * m.dir; if (adv <= -1) { state = (r.z < 0 ? 'low' : 'high') + ' for you'; bad.push(m.lc); } else if (adv >= 1) { state = (r.z > 0 ? 'high' : 'low') + ', a good sign'; good.push(m.lc); } else state = 'usual'; }
+      else if (r && r.mean != null) state = 'usual ' + round(r.mean, m.dp);
+      var spark = el('span', { 'class': 'spark' });
+      var b = el('button', { type: 'button', 'class': 'rowbtn', 'aria-label': m.name + ', open in History' }, [el('b', { text: m.name }), k, el('span', { text: r ? state : 'no reading yet' }), spark]);
+      b.addEventListener('click', function () { S.metric = m.key; S.hsel = S.sel; location.hash = 'history'; });
+      var item = el('div', { 'class': 'item' + (state.indexOf('for you') > 0 ? ' item--off' : '') }, [b]);
+      item._spark = function () { wave(spark, S.feed.slice(-30), function (row) { return mv(m, row); }, null, null, 28); };
+      return item;
+    });
+    fill($('vit-list'), rows); rows.forEach(function (r) { r._spark(); });
+    var v = '';
+    if (S.state !== 'ok' || !seen) v = S.state === 'ok' ? 'No vitals on record yet.' : '';
+    else if (bad.length >= 2) v = bad.length + ' vitals are off your usual: ' + bad.join(', ') + '. Read it as a recovery signal.';
+    else if (bad.length === 1) v = bad[0].charAt(0).toUpperCase() + bad[0].slice(1) + ' is off your usual; the rest are steady.';
+    else if (good.length) v = 'Better than your usual, led by ' + good[0] + '.';
+    else v = 'All vitals are inside your usual range.';
+    $('verdict').textContent = v;
     renderTonight();
   }
   function renderTonight() {
     var w = hm($('wake').value), t = latest(), debt = t && t['Sleep debt 7d h'];
-    $('tonight').textContent = w == null ? '' : 'Asleep by ' + clock(w - NEED) + (debt > 0 ? ', or ' + clock(w - NEED - 0.5) + ' to pay back half an hour of a ' + debt + ' hour debt.' : '.');
+    $('tonight').textContent = w == null || S.state !== 'ok' ? '' : 'Asleep by ' + clock(w - NEED) + (debt > 0 ? ', or ' + clock(w - NEED - 0.5) + ' to pay back half an hour of a ' + debt + ' hour debt.' : '.');
+  }
+
+  /* history: what changed and what moved with it */
+  function drivers(rows, m) {
+    var D = [
+      { skip: ['sleep'], get: function (r) { return r['Sleep h']; }, say: function (d) { return 'slept ' + round(Math.abs(d), 1) + ' h ' + (d < 0 ? 'less' : 'more'); } },
+      { skip: [], get: function (r) { var h = hm(r['Sleep start']); return h == null ? null : (h + 6) % 24; }, say: function (d) { var mins = Math.round(Math.abs(d) * 60); return 'went to bed ' + (mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min') + (d > 0 ? ' later' : ' earlier'); } },
+      { skip: ['deep'], get: function (r) { return r['Deep min']; }, say: function (d) { return 'had ' + Math.round(Math.abs(d)) + ' min ' + (d < 0 ? 'less' : 'more') + ' deep sleep'; } },
+      { skip: [], get: function (r) { var k = addDays(r.Date, -1); return sum(S.workouts.filter(function (w) { return wkey(w) === k; }).map(function (w) { return w.kcal; })); }, say: function (d) { return 'burned ' + Math.round(Math.abs(d)) + ' kcal ' + (d > 0 ? 'more' : 'less') + ' in workouts the day before'; } },
+      { skip: [], get: function (r) { var c = S.calories[addDays(r.Date, -1)]; return c ? c[0] : null; }, say: function (d) { return 'burned ' + thousands(Math.abs(d)) + ' kcal ' + (d > 0 ? 'more' : 'less') + ' overall the day before'; } }
+    ];
+    var have = rows.filter(function (r) { return mv(m, r) != null; }), vals = have.map(function (r) { return mv(m, r); }).sort(function (a, b) { return a - b; });
+    if (have.length < 8) return null;
+    var med = vals[Math.floor(vals.length / 2)], lo = have.filter(function (r) { return mv(m, r) < med; }), hi = have.filter(function (r) { return mv(m, r) >= med; }), out = [];
+    D.forEach(function (d) {
+      if (d.skip.indexOf(m.key) >= 0) return;
+      var a = lo.map(d.get).filter(function (v) { return v != null; }), b = hi.map(d.get).filter(function (v) { return v != null; }), all = a.concat(b), s = sd(all);
+      if (a.length < 4 || b.length < 4 || !s) return;
+      var diff = mean(a) - mean(b), size = Math.abs(diff) / s;
+      if (size >= 0.5) out.push({ size: size, text: d.say(diff) });
+    });
+    return out.sort(function (x, y) { return y.size - x.size; }).slice(0, 3);
+  }
+  function renderHistory() {
+    var m = metric(S.metric), rows = S.feed.slice(-S.range), d = byDate(S.hsel), ok = S.state === 'ok';
+    document.querySelectorAll('input[name="metric"]').forEach(function (n) { n.checked = n.value === m.key; });
+    if (d && rows.indexOf(d) < 0) { d = rows[rows.length - 1] || null; S.hsel = d ? d.Date : null; }
+    var get = function (r) { return mv(m, r); }, vs = rows.map(get).filter(function (v) { return v != null; });
+    var a7 = mean(S.feed.slice(-7).map(get).filter(function (v) { return v != null; })), b7 = mean(S.feed.slice(-14, -7).map(get).filter(function (v) { return v != null; }));
+    var wk = '';
+    if (ok && a7 != null && b7 != null) {
+      var diff = a7 - b7, small = Math.abs(diff) < Math.max(Math.abs(b7) * 0.02, Math.pow(10, -m.dp));
+      wk = m.name + ' averaged ' + show1(m, a7) + ' over the last 7 days, ' + (small ? 'level with' : round(Math.abs(diff), m.dp) + (diff > 0 ? ' higher than' : ' lower than')) + ' the 7 before' + (small || !m.dir ? '.' : (diff * m.dir > 0 ? ', the better direction.' : ', the worse direction.'));
+    } else if (ok) wk = 'Not enough ' + m.lc + ' readings yet to compare weeks.';
+    $('hist-week').textContent = wk;
+    $('hist-avg').textContent = vs.length ? 'Average ' + show1(m, mean(vs)) : '';
+    $('hist-read').textContent = d ? fmt(d.Date) + '  ' + show1(m, get(d)) : '';
+    wave($('hist-wave'), rows, get, S.hsel, function (key) { S.hsel = key; renderHistory(); });
+    var dr = ok ? drivers(rows, m) : [];
+    $('hist-why-h').textContent = dr && dr.length ? 'On your lower ' + m.lc + ' days you' : 'What lines up with the change';
+    fill($('hist-why'), !ok ? [] : dr == null ? [el('li', { text: 'Needs at least 8 days of readings in this range.' })] : !dr.length ? [el('li', { text: 'Nothing in sleep or training separates your higher and lower days in this range.' })] : dr.map(function (x) { return el('li', { text: x.text }); }));
+    var best = null, worst = null; rows.forEach(function (r) { var v = get(r); if (v == null) return; if (!best || v > get(best)) best = r; if (!worst || v < get(worst)) worst = r; });
+    fill($('hist-ends'), [['Highest', best], ['Lowest', worst]].map(function (p) { var dd = el('dd'); if (p[1]) { dd.appendChild(document.createTextNode(String(round(get(p[1]), m.dp)))); dd.appendChild(el('small', { text: ' ' + fmt(p[1].Date) })); } else dd.textContent = ok ? 'none' : ''; return el('div', {}, [el('dt', { text: p[0] }), dd]); }));
+    $('hist-day').textContent = d ? fmtLong(d.Date) : '';
+    var cal = d ? S.calories[d.Date] : null, vit = d ? (S.vitals[d.Date] || {}) : {}, ws = d ? S.workouts.filter(function (w) { return wkey(w) === d.Date; }).map(function (w) { return w.tag || title(w.type); }).join(', ') : '';
+    var items = !d ? [] : [
+      ['Tempo', d.Readiness == null ? '' : bpm(d.Readiness) + ', score ' + d.Readiness],
+      ['Sleep', d['Sleep h'] == null ? '' : d['Sleep h'] + ' h' + (hm(d['Sleep start']) != null ? ', ' + clock(hm(d['Sleep start'])) + ' to ' + clock(hm(d['Sleep end'])) : '')],
+      ['Stages', d['Sleep h'] == null ? '' : 'deep ' + (d['Deep min'] || 0) + ', REM ' + (d['REM min'] || 0) + ', light ' + (d['Core min'] || 0) + ' min'],
+      ['HRV', d['HRV ms'] == null ? '' : d['HRV ms'] + ' ms'], ['Resting HR', d['RHR bpm'] == null ? '' : d['RHR bpm'] + ' bpm'],
+      ['Oxygen', vit.spo2 == null ? '' : vit.spo2 + ' %'], ['Breathing', vit.br == null ? '' : vit.br + ' per min'], ['Skin temp', vit.temp == null ? '' : (vit.temp > 0 ? '+' : '') + vit.temp + ' °C vs usual'],
+      ['Burned', cal && cal[0] ? thousands(cal[0]) + ' kcal' + (cal[1] ? ', ' + thousands(cal[1]) + ' active' : '') : ''], ['Workouts', ws]
+    ].filter(function (p) { return p[1]; });
+    fill($('hist-dl'), items.map(function (p) { return el('div', {}, [el('dt', { text: p[0] }), el('dd', { text: p[1] })]); }));
+    renderRecap();
+  }
+  function renderRecap() {
+    var m0 = monday(localKey()), a = addDays(m0, -7), b = addDays(m0, -14);
+    var wkStats = function (st) {
+      var en = addDays(st, 6), ws = S.workouts.filter(function (w) { var k = wkey(w); return k >= st && k <= en; }), days = S.feed.filter(function (r) { return r.Date >= st && r.Date <= en; });
+      var burn = 0; for (var i = 0; i < 7; i++) burn += (S.calories[addDays(st, i)] || [0])[0] || 0;
+      return { n: ws.length, burn: burn, km: weekKm(st), tempo: mean(days.map(function (r) { return r.Readiness; }).filter(function (v) { return v != null; }).map(function (v) { return 90 + v / 2; })), sleep: mean(days.map(function (r) { return r['Sleep h']; }).filter(function (v) { return v != null; })) };
+    };
+    var x = wkStats(a), y = wkStats(b), ok = S.state === 'ok';
+    $('recap-h').textContent = 'Last week, ' + fmt(a) + ' to ' + fmt(addDays(a, 6));
+    var line = function (name, u, v, dp, unit) { var chg = u == null || v == null ? '' : (u - v >= 0 ? '+' : '') + (dp < 0 ? thousands(u - v) : round(u - v, dp)); return el('tr', {}, [el('td', { text: name }), el('td', { 'class': 'r', text: u == null ? 'none' : (dp < 0 ? thousands(u) : round(u, dp)) + (unit ? ' ' + unit : '') }), el('td', { 'class': 'r', text: chg })]); };
+    fill($('recap'), !ok ? [] : [line('Workouts', x.n, y.n, 0, ''), line('Burned', x.burn || null, y.burn || null, -1, 'kcal'), line('Run', x.km, y.km, 1, 'km'), line('Average tempo', x.tempo, y.tempo, 0, ''), line('Average sleep', x.sleep, y.sleep, 2, 'h')]);
   }
 
   /* shell */
-  function renderAll() { renderDeck(); renderWorkouts(); renderRun(); renderLog(); renderHistory(); }
+  function renderAll() { renderDeck(); renderWorkouts(); renderRun(); renderVitals(); renderHistory(); }
   function current() { var h = (location.hash || '').replace('#', ''); return TABS.indexOf(h) >= 0 ? h : 'deck'; }
   function show() {
     var cur = current();
     TABS.forEach(function (t) { $(t).hidden = t !== cur; });
     document.querySelectorAll('.tabs a').forEach(function (a) { if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     window.scrollTo(0, 0);
-    if (cur === 'deck') renderDeck(); if (cur === 'history') renderHistory();
+    if (cur === 'deck') renderDeck(); if (cur === 'history') renderHistory(); if (cur === 'vitals') renderVitals();
   }
   function nudge(input, by, lo, hi, dp) { input.value = round(Math.max(lo, Math.min(hi, (+input.value || 0) + by)), dp); input.dispatchEvent(new Event('input', { bubbles: true })); }
 
   for (var i = 0; i <= TICKS; i++) $('ticks').appendChild(sv('line', { 'class': 'tick', x1: 150, y1: 16, x2: 150, y2: i % 10 === 0 ? 36 : 30, transform: 'rotate(' + (-135 + i * 270 / TICKS) + ' 150 150)' }));
+  M.forEach(function (m) { $('metric').appendChild(el('input', { type: 'radio', name: 'metric', id: 'm-' + m.key, value: m.key })); $('metric').appendChild(el('label', { 'for': 'm-' + m.key, text: m.name })); });
   bindWave($('wave')); bindWave($('hist-wave'));
   window.addEventListener('hashchange', show);
   $('reload').addEventListener('click', refresh);
   $('lock').addEventListener('click', function () { lock(''); });
   $('back').addEventListener('click', function () { S.sel = latest() ? latest().Date : null; renderDeck(); });
-  document.querySelectorAll('.ch').forEach(function (c) { c.addEventListener('click', function () { S.metric = c.getAttribute('data-metric'); setChecked('metric', S.metric); S.hsel = S.sel; location.hash = 'history'; }); });
-  $('wk-prev').addEventListener('click', function () { S.week--; renderWorkouts(); });
-  $('wk-next').addEventListener('click', function () { S.week++; renderWorkouts(); });
+  document.querySelectorAll('.ch').forEach(function (c) { c.addEventListener('click', function () { S.metric = c.getAttribute('data-metric'); S.hsel = S.sel; location.hash = 'history'; }); });
+  $('wk-prev').addEventListener('click', function () { S.week--; S.open = null; renderWorkouts(); });
+  $('wk-next').addEventListener('click', function () { S.week++; S.open = null; renderWorkouts(); });
+  $('goal-down').addEventListener('click', function () { setGoal(Math.max(1, goal() - 0.5)); });
+  $('goal-up').addEventListener('click', function () { setGoal(Math.min(150, goal() + 0.5)); });
+  $('goal-auto').addEventListener('click', function () { setGoal(0); });
   $('km-down').addEventListener('click', function () { nudge($('pace-km'), -0.5, 0.5, 42, 1); });
   $('km-up').addEventListener('click', function () { nudge($('pace-km'), 0.5, 0.5, 42, 1); });
   $('pace-km').addEventListener('input', renderPace);
-  $('log-form').addEventListener('submit', saveEntry);
-  $('log-form').addEventListener('input', syncForm);
-  $('log-form').addEventListener('change', syncForm);
-  $('f-cancel').addEventListener('click', resetForm);
-  $('min-down').addEventListener('click', function () { nudge($('f-min'), -5, 1, 600, 0); });
-  $('min-up').addEventListener('click', function () { nudge($('f-min'), 5, 1, 600, 0); });
-  $('metric').addEventListener('change', function () { S.metric = checked('metric') || 'Readiness'; renderHistory(); });
-  $('range').addEventListener('change', function () { S.range = +checked('range') || 30; renderHistory(); });
+  $('metric').addEventListener('change', function () { var n = document.querySelector('input[name="metric"]:checked'); S.metric = n ? n.value : 'tempo'; renderHistory(); });
+  $('range').addEventListener('change', function () { var n = document.querySelector('input[name="range"]:checked'); S.range = n ? +n.value : 30; renderHistory(); });
   $('wake').addEventListener('input', renderTonight);
   $('gate-form').addEventListener('submit', unlock);
   $('g-pin').addEventListener('input', function () { var v = $('g-pin').value.replace(/\D/g, '').slice(0, 4); if (v !== $('g-pin').value) $('g-pin').value = v; if (v.length === 4 && $('g-url-wrap').hidden) unlock(); });
   $('g-forget').addEventListener('click', function () { try { localStorage.removeItem(URL_KEY); } catch (e) { /* nothing stored */ } $('g-url').value = ''; showGate(''); });
   ['pointerdown', 'keydown'].forEach(function (t) { document.addEventListener(t, armIdle, { passive: true }); });
-  var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { renderDeck(); renderHistory(); }, 150); });
-  resetForm(); show(); renderAll(); showGate('');
+  var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(renderAll, 150); });
+  show(); renderAll(); showGate('');
 })();
 </script>
 </body>

@@ -10,15 +10,17 @@
  * items (see README), then Deploy > New deployment > Web app
  * (Execute as: Me, Who has access: Anyone).
  *
- * Relies on Code.gs for: TAB, TZ, SHIFT_OPTIONS, SESSION_OPTIONS, readConfig_,
- * recompute, logDateKey, localParts, parseDate, num. Calls writeCoachFeed_ (HealthApi.gs) if present.
+ * Relies on Code.gs for: TAB, TZ, readConfig_, localParts, parseDate, num.
+ * The site only reads, except for two small writes: a Push/Pull/Legs tag on a
+ * Fitbit workout (Tags tab) and the weekly run goal (a script property). Calls writeCoachFeed_ (HealthApi.gs) if present.
  */
 
 const WEB_TRIES_PER_LOCK = 5;   // wrong PINs before a timed lock
 const WEB_LOCK_MINUTES = 60;    // length of the timed lock
 const WEB_HARD_LOCK = 15;       // wrong PINs in a row before a lock only the sheet menu clears
 const WEB_FEED_DAYS = 90;       // days of the Daily tab sent to the site
-const WEB_LOG_COLS = 10;        // Log tab columns A..J; J holds a row id for the site
+const WEB_TAGS = ['Push', 'Pull', 'Legs'];
+const WEB_TAG_TAB = 'Tags';     // Key (workout start), Tag, Set at
 
 function doGet() {
   return webJson_({ ok: false, error: 'post_only' });
@@ -43,16 +45,12 @@ function doPost(e) {
       try { pullHealth(2); } catch (err) { return webJson_({ ok: false, error: 'pull_failed' }); }
       return webJson_(webFeed_());
     }
-    if (action === 'save') {
-      if (!webSaveEntry_(body.entry || {})) return webJson_({ ok: false, error: 'invalid' });
-    } else if (action === 'delete') {
-      webDeleteEntry_(String(body.id || ''));
+    if (action === 'tag') {
+      if (!webSetTag_(String(body.start || ''), String(body.tag || ''))) return webJson_({ ok: false, error: 'invalid' });
+    } else if (action === 'goal') {
+      if (!webSetRunGoal_(body.km)) return webJson_({ ok: false, error: 'invalid' });
     } else if (action !== 'feed') {
       return webJson_({ ok: false, error: 'bad_request' });
-    }
-    if (action !== 'feed') {
-      recompute();
-      try { writeCoachFeed_(); } catch (err) { /* the coach feed catches up on the next pull */ }
     }
     return webJson_(webFeed_());
   } catch (err) {
@@ -130,8 +128,9 @@ function webFeed_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(TAB.DAILY);
   const total = Math.max(sh.getLastRow() - 1, 0), cols = sh.getLastColumn();
   const n = Math.min(total, WEB_FEED_DAYS);
-  let activity = { workouts: [], calories: {} };
+  let activity = { workouts: [], calories: {}, vitals: {} };
   try { activity = webActivity_(); } catch (err) { /* the feed still goes out without workouts */ }
+  const goal = Number(PropertiesService.getScriptProperties().getProperty('WEB_RUN_GOAL'));
   return {
     ok: true,
     generated: new Date().toISOString(),
@@ -139,107 +138,82 @@ function webFeed_() {
     status: String(readConfig_().HEALTH_STATUS || ''),
     head: cols ? sh.getRange(1, 1, 1, cols).getDisplayValues()[0] : [],
     days: n ? sh.getRange(2, 1, n, cols).getDisplayValues() : [],   // newest first, as the sheet shows them
-    log: webReadLog_(),
     workouts: activity.workouts,
     calories: activity.calories,
+    vitals: activity.vitals,
+    runGoal: goal > 0 ? goal : null,
   };
 }
 
-/** Fitbit workouts and daily calories from the Raw tab, last WEB_FEED_DAYS days. */
+/** Fitbit workouts, daily calories and nightly vitals from the Raw tab, last WEB_FEED_DAYS days. */
 function webActivity_() {
-  const out = { workouts: [], calories: {} };
+  const out = { workouts: [], calories: {}, vitals: {} };
   const sh = SpreadsheetApp.getActive().getSheetByName(TAB.RAW);
   if (!sh || sh.getLastRow() < 2) return out;
+  const tags = webReadTags_();
   const cutoff = Date.now() - WEB_FEED_DAYS * 86400000;
+  const VITAL = { 'GH SpO2 daily': 'spo2', 'GH Breathing daily': 'br', 'GH Skin temp daily': 'temp' };
+  const seen = {};
   sh.getRange(2, 2, sh.getLastRow() - 1, 6).getValues().forEach(r => {   // Type, Start, End, Value, Unit, Extra
     const type = String(r[0]);
-    if (type !== 'GH Workout' && type !== 'GH Calories daily') return;
+    if (type !== 'GH Workout' && type !== 'GH Calories daily' && !VITAL[type]) return;
     const a = parseDate(r[1]), b = parseDate(r[2]);
     if (!a || a.getTime() < cutoff) return;
-    if (type === 'GH Calories daily') {
-      out.calories[localParts(a).key] = [num(r[3]), num(r[5])];
-      return;
-    }
+    if (type === 'GH Calories daily') { out.calories[localParts(a).key] = [num(r[3]), num(r[5])]; return; }
+    if (VITAL[type]) { const k = localParts(a).key; (out.vitals[k] || (out.vitals[k] = {}))[VITAL[type]] = num(r[3]); return; }
+    const start = Utilities.formatDate(a, TZ, 'yyyy-MM-dd HH:mm');
+    if (seen[start]) return;
+    seen[start] = true;
     const unit = String(r[4] || '');
-    const pick = k => { const m = unit.match(new RegExp(k + ':([0-9.]+)')); return m ? Number(m[1]) : null; };
+    const pick = k => { const m = unit.match(new RegExp('(?:^|;)' + k + ':([0-9.]+)')); return m ? Number(m[1]) : null; };
     out.workouts.push({
-      start: Utilities.formatDate(a, TZ, 'yyyy-MM-dd HH:mm'),
-      min: b ? Math.round((b - a) / 60000) : null,
-      type: String(r[3] || 'OTHER'), km: num(r[5]), kcal: pick('kcal'), hr: pick('hr'),
+      start: start, min: b ? Math.round((b - a) / 60000) : null,
+      type: String(r[3] || 'OTHER'), km: num(r[5]), kcal: pick('kcal'), hr: pick('hr'), azm: pick('azm'),
+      zones: [pick('zl'), pick('zm'), pick('zv'), pick('zp')], tag: tags[start] || '',
     });
   });
   out.workouts.sort((x, y) => (x.start < y.start ? 1 : -1));
   return out;
 }
 
-/* ───────────────────────── Log tab ───────────────────────── */
+/* ───────────────────────── Tags and run goal ───────────────────────── */
 
-function webLogSheet_() {
-  const sh = SpreadsheetApp.getActive().getSheetByName(TAB.LOG);
-  if (sh.getRange(1, WEB_LOG_COLS).getValue() !== 'Id') sh.getRange(1, WEB_LOG_COLS).setValue('Id').setFontWeight('bold');
+function webTagSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(WEB_TAG_TAB);
+  if (!sh) {
+    sh = ss.insertSheet(WEB_TAG_TAB, ss.getSheets().length);
+    sh.getRange(1, 1, 1, 3).setValues([['Key', 'Tag', 'Set at']]).setFontWeight('bold');
+    sh.getRange('A:A').setNumberFormat('@');
+    sh.setFrozenRows(1);
+  }
   return sh;
 }
 
-function webReadLog_() {
-  const sh = webLogSheet_();
-  const last = sh.getLastRow();
-  if (last < 2) return [];
-  const out = [];
-  sh.getRange(2, 1, last - 1, WEB_LOG_COLS).getValues().forEach((r, i) => {
-    if (r[0] === '') return;
-    const date = logDateKey(r[0]);
-    if (!date) return;
-    if (!r[9]) { r[9] = Utilities.getUuid().slice(0, 8); sh.getRange(i + 2, WEB_LOG_COLS).setValue(r[9]); }
-    out.push({
-      id: String(r[9]), date: date, shift: String(r[1] || ''), type: String(r[2] || ''),
-      minutes: num(r[3]), rpe: num(r[4]), km: num(r[5]),
-      glute: num(r[6]) || 0, shoulder: num(r[7]) || 0, notes: String(r[8] || ''),
-    });
-  });
-  out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  return out.slice(0, 400);
+function webReadTags_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(WEB_TAG_TAB), out = {};
+  if (!sh || sh.getLastRow() < 2) return out;
+  sh.getRange(2, 1, sh.getLastRow() - 1, 2).getDisplayValues().forEach(r => { if (r[0] && r[1]) out[r[0]] = r[1]; });
+  return out;
 }
 
-function webFindRow_(sh, id) {
-  if (!id) return 0;
-  const last = sh.getLastRow();
-  if (last < 2) return 0;
-  const ids = sh.getRange(2, WEB_LOG_COLS, last - 1, 1).getValues();
-  for (let i = 0; i < ids.length; i++) if (String(ids[i][0]) === id) return i + 2;
-  return 0;
-}
-
-/** Validates everything the site sends; returns false instead of writing a bad row. */
-function webSaveEntry_(x) {
-  const date = String(x.date || '');
-  const type = String(x.type || ''), shift = String(x.shift || '');
-  const within = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
-  const rest = type === 'Rest';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(new Date(date + 'T12:00:00+09:00'))) return false;
-  if (SESSION_OPTIONS.indexOf(type) < 0) return false;
-  if (shift && SHIFT_OPTIONS.indexOf(shift) < 0) return false;
-  if (!rest && (!within(x.minutes, 1, 600) || !within(x.rpe, 1, 10))) return false;
-  if (x.km != null && !within(x.km, 0, 100)) return false;
-  if (!within(x.glute, 0, 10) || !within(x.shoulder, 0, 10)) return false;
-  let notes = String(x.notes || '').slice(0, 200);
-  if (/^[=+\-@]/.test(notes)) notes = "'" + notes;              // never let a note become a formula
-
-  const sh = webLogSheet_();
-  const id = String(x.id || '');
-  let row = webFindRow_(sh, id);
-  if (id && !row) return false;
-  if (!row) row = sh.getLastRow() + 1;
-  sh.getRange(row, 1, 1, WEB_LOG_COLS).setValues([[
-    new Date(date + 'T12:00:00+09:00'), shift, type,
-    rest ? '' : Math.round(x.minutes), rest ? '' : Math.round(x.rpe),
-    x.km == null ? '' : x.km, Math.round(x.glute), Math.round(x.shoulder), notes,
-    id || Utilities.getUuid().slice(0, 8),
-  ]]);
+/** Tag a workout by its start time ("yyyy-MM-dd HH:mm"); an empty tag clears it. */
+function webSetTag_(start, tag) {
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(start)) return false;
+  if (tag && WEB_TAGS.indexOf(tag) < 0) return false;
+  const sh = webTagSheet_(), last = sh.getLastRow();
+  const keys = last > 1 ? sh.getRange(2, 1, last - 1, 1).getDisplayValues().map(r => r[0]) : [];
+  const i = keys.indexOf(start);
+  if (i >= 0) { if (tag) sh.getRange(i + 2, 2, 1, 2).setValues([[tag, new Date()]]); else sh.deleteRow(i + 2); }
+  else if (tag) sh.getRange(last + 1, 1, 1, 3).setValues([[start, tag, new Date()]]);
   return true;
 }
 
-function webDeleteEntry_(id) {
-  const sh = webLogSheet_();
-  const row = webFindRow_(sh, id);
-  if (row) sh.deleteRow(row);
+/** Weekly run goal in km; null or 0 hands it back to the app's own suggestion. */
+function webSetRunGoal_(km) {
+  const p = PropertiesService.getScriptProperties();
+  if (km == null || km === 0) { p.deleteProperty('WEB_RUN_GOAL'); return true; }
+  if (typeof km !== 'number' || !isFinite(km) || km < 1 || km > 150) return false;
+  p.setProperty('WEB_RUN_GOAL', String(Math.round(km * 2) / 2));
+  return true;
 }

@@ -4,8 +4,9 @@
  * Adds two things to the hourly pull without touching the metrics engine:
  *  - 'GH Calories daily' rows in Raw: total kcal burned that day (Value) and
  *    the active part (Extra). The engine ignores this row type.
- *  - workout rows keep km in Extra; kcal and average heart rate ride in Unit
- *    as "km;kcal:455;hr:156".
+ *  - workout rows keep km in Extra; kcal, average heart rate, zone minutes ride
+ *    in Unit as "km;kcal:455;hr:156;azm:15;zl:84;zm:14".
+ *  - nightly blood oxygen, breathing rate and skin temperature rows.
  * A calorie failure is logged and skipped so it can never stop a pull.
  */
 
@@ -49,7 +50,48 @@ function ghCalorieSamples_(since) {
   } catch (err) {
     Logger.log('calories skipped: ' + err);
   }
+  ghVitalSamples_(since).forEach(s => out.push(s));
   return out;
+}
+
+/**
+ * Nightly vitals the engine does not use: blood oxygen, breathing rate and skin
+ * temperature (stored as the difference from Fitbit's own baseline).
+ */
+function ghVitalSamples_(since) {
+  const out = [];
+  const each = (type, field, fn) => {
+    try {
+      healthList_(type, type.replace(/-/g, '_') + '.date >= "' + since + '"').forEach(p => {
+        const x = p[field] || {};
+        if (x.date) fn(x, ghNoon_(x.date));
+      });
+    } catch (err) { Logger.log(type + ' skipped: ' + err); }
+  };
+  each('daily-oxygen-saturation', 'dailyOxygenSaturation', (x, t) => {
+    const v = Number(x.averagePercentage);
+    if (v > 0) out.push(ghSample_('GH SpO2 daily', t, t, Math.round(v * 10) / 10, '%', Number(x.lowerBoundPercentage) || ''));
+  });
+  each('daily-respiratory-rate', 'dailyRespiratoryRate', (x, t) => {
+    const v = Number(x.breathsPerMinute);
+    if (v > 0) out.push(ghSample_('GH Breathing daily', t, t, Math.round(v * 10) / 10, 'br/min'));
+  });
+  each('daily-sleep-temperature-derivations', 'dailySleepTemperatureDerivations', (x, t) => {
+    const n = Number(x.nightlyTemperatureCelsius), b = Number(x.baselineTemperatureCelsius);
+    if (n > 0 && b > 0) out.push(ghSample_('GH Skin temp daily', t, t, Math.round((n - b) * 100) / 100, 'C vs baseline', Math.round(n * 100) / 100));
+  });
+  return out;
+}
+
+/** Everything about a workout beyond distance, packed into the Unit column. */
+function ghWorkoutUnit_(e) {
+  const ms = e.metricsSummary || {}, z = ms.heartRateZoneDurations || {};
+  const mins = v => Math.round((parseFloat(v) || 0) / 60);
+  const parts = ['km'];
+  const add = (k, v) => { if (v > 0) parts.push(k + ':' + Math.round(v)); };
+  add('kcal', Number(ms.caloriesKcal)); add('hr', Number(ms.averageHeartRateBeatsPerMinute)); add('azm', Number(ms.activeZoneMinutes));
+  add('zl', mins(z.lightTime)); add('zm', mins(z.moderateTime)); add('zv', mins(z.vigorousTime)); add('zp', mins(z.peakTime));
+  return parts.join(';');
 }
 
 /** Run once from the editor to see what Google returns. */
