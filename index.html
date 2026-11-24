@@ -341,7 +341,7 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
   <div>
     <details><summary>Tempo</summary><p>Your readiness score from 0 to 100, shown as 90 plus half the score. A score of 60 reads 120. The colour runs red below 40, yellow in the 50s, green from 60 to 70, blue from 80 to 90 and white above 90.</p></details>
     <details><summary>Readiness score</summary><p>Three readings are measured against your own 60 day baseline and blended: HRV 45 percent, resting heart rate 30 percent with higher counted as worse, and last night’s sleep against a 7.5 hour need 25 percent. The effort line uses the sheet’s zones: 70 or more, 50 to 69, under 50.</p></details>
-    <details><summary>Up next</summary><p>Whichever of Push, Pull or Legs you tagged longest ago, once it has had two full days off. On a Legs day a run is added when the weekly distance goal is behind. Under a score of 50 the lift moves to tomorrow and an easy run or mobility takes its place. It only knows the lifts you tag on the Workouts tab.</p></details>
+    <details><summary>Up next</summary><p>Whichever of Push, Pull or Legs you tagged longest ago (ETC tags are left out), once it has had two full days off. On a Legs day a run is added when the weekly distance goal is behind. Under a score of 50 the lift moves to tomorrow and an easy run or mobility takes its place. It only knows the lifts you tag on the Workouts tab.</p></details>
     <details><summary>Run goal</summary><p>The suggestion is last week’s distance plus about 10 percent, never less than what you have already run this week. With no run last week it falls back to your four week average. The plus and minus buttons override it until you choose the suggestion again.</p></details>
     <details><summary>Vitals verdict</summary><p>Each vital’s latest reading is compared with your own previous 30 days. A reading counts as off when it sits more than one standard deviation on the worse side: lower HRV, sleep or blood oxygen, higher resting heart rate, breathing rate or skin temperature.</p></details>
     <details><summary>History</summary><p>The days in range are split into the higher and lower half for the chosen metric. The list shows which of sleep length, bedtime, deep sleep and the previous day’s training differ most between the two halves. It shows what moves together, not what causes what.</p></details>
@@ -363,7 +363,7 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
 (function () {
   'use strict';
   var URL_KEY = 'adh.script', URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/, IDLE_MS = 600000;
-  var NEED = 7.5, NS = 'http://www.w3.org/2000/svg', TICKS = 50, TAGS = ['Push', 'Pull', 'Legs'];
+  var NEED = 7.5, NS = 'http://www.w3.org/2000/svg', TICKS = 50, TAGS = ['Push', 'Pull', 'Legs'], CHOICES = TAGS.concat(['ETC']);
   var PACES = [['Zone 2', 375, 405], ['Zone 3', 330, 360], ['Zone 4', 290, 320], ['Zone 5', null, 270]];
   var TABS = ['deck', 'workouts', 'run', 'vitals', 'history', 'notes'];
   var CALL = { Green: 'Effort: go hard if you want', Amber: 'Effort: cap it at 7 of 10', Red: 'Effort: keep it easy' };
@@ -616,8 +616,8 @@ td.r, th.r { text-align: right; padding-right: 0; font-family: var(--font-read);
     var facts = [['Time', w.min != null ? hmin(w.min) : ''], ['Calories', w.kcal != null ? Math.round(w.kcal) + ' kcal' : ''], ['Average HR', w.hr ? Math.round(w.hr) + ' bpm' : ''], ['Zone minutes', w.azm ? String(w.azm) : ''], ['Distance', w.km ? w.km + ' km' : ''], ['Pace', w.km && w.min ? mmss(w.min * 60 / w.km) + ' per km' : ''], ['Per minute', w.kcal && w.min ? round(w.kcal / w.min, 1) + ' kcal' : '']].filter(function (f) { return f[1]; });
     var box = el('div', { 'class': 'detail' }, [el('dl', { 'class': 'facts' }, facts.map(function (f) { return el('div', {}, [el('dt', { text: f[0] }), el('dd', { text: f[1] })]); })), zonesBar(w)]);
     if (isLift(w)) {
-      var expect = w.tag || ((rotation(wkey(w)).best || {}).tag) || 'Push', seg = el('div', { 'class': 'tagrow', role: 'group', 'aria-label': 'Which lift was this' });
-      TAGS.forEach(function (t) {
+      var expect = w.tag || ((rotation(wkey(w)).best || {}).tag) || 'Push', seg = el('div', { 'class': 'tagrow', role: 'group', 'aria-label': 'Which workout was this' });
+      CHOICES.forEach(function (t) {
         var b = el('button', { type: 'button', 'class': 'chip' + (t === expect && !w.tag ? ' chip--go' : ''), 'aria-pressed': w.tag === t ? 'true' : 'false', text: t });
         b.addEventListener('click', function () { write('tag', { start: w.start, tag: w.tag === t ? '' : t }, $('wk-help'), 'Saving the tag'); });
         seg.appendChild(b);

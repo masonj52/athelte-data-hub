@@ -19,7 +19,7 @@ const WEB_TRIES_PER_LOCK = 5;   // wrong PINs before a timed lock
 const WEB_LOCK_MINUTES = 60;    // length of the timed lock
 const WEB_HARD_LOCK = 15;       // wrong PINs in a row before a lock only the sheet menu clears
 const WEB_FEED_DAYS = 90;       // days of the Daily tab sent to the site
-const WEB_TAGS = ['Push', 'Pull', 'Legs'];
+const WEB_TAGS = ['Push', 'Pull', 'Legs', 'ETC'];
 const WEB_TAG_TAB = 'Tags';     // Key (workout start), Tag, Set at
 
 function doGet() {
